@@ -1,0 +1,49 @@
+seml:
+  executable: experiments/train_model/train_model.py
+  name: eq_mle
+  output_dir: slurm_output/
+  project_root_dir: ../..
+
+slurm:
+  experiments_per_job: 1
+  sbatch_options:
+    gres: gpu:1       # num GPUs
+    mem: 32G          # memory
+    cpus-per-task: 3  # num cores
+    time: 0-05:00      # max time, D-HH:MM
+    partition: gpu_all
+
+fixed:
+  max_epochs: 1500
+  patience: 200
+  wandb_entity: eq-ntpp
+  wandb_project: release
+  model_name: RecurrentTPP
+  use_double_precision: False
+  minibatch_training: False
+
+grid:
+  random_seed:
+    type: range
+    min: 0
+    max: 5
+    step: 1
+
+big_datasets:
+  fixed:
+    learning_rate: 5e-2
+
+  grid:
+    dataset_name:
+      type: choice
+      options:
+        - QTMSanJacinto
+        - QTMSaltonSea
+        - SCEDC
+        - White
+
+small_dataset:
+  fixed:
+    dataset_name: ETAS_MultiCatalog
+    batch_size: 64
+    learning_rate: 1e-2

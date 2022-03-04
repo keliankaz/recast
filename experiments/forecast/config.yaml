@@ -1,0 +1,73 @@
+# Datasets that fit into GPU RAM for ETAS and NTPP models
+seml:
+  executable: experiments/forecast/make_forecasts.py
+  name: eq_forecast
+  output_dir: slurm_output/
+  project_root_dir: ../..
+
+slurm:
+  experiments_per_job: 1
+  sbatch_options:
+    gres: gpu:1       # num GPUs
+    mem: 64G          # memory
+    cpus-per-task: 10 # num cores
+    time: 0-04:00     # max time, D-HH:MM
+    partition: gpu_all
+
+fixed:
+  num_samples: 50000
+
+grid:
+  model_name:
+    type: choice
+    options:
+      - RecurrentTPP
+      - ETAS
+
+scedc14:
+  fixed:
+    dataset_name: SCEDC
+    forecast_length: 14
+
+  grid:
+    time_index:
+      type: range
+      min: 0
+      max: 156
+      step: 1
+
+scedc7:
+  fixed:
+    dataset_name: SCEDC
+    forecast_length: 7
+
+  grid:
+    time_index:
+      type: range
+      min: 0
+      max: 313
+      step: 1
+
+white14:
+  fixed:
+    dataset_name: White
+    forecast_length: 14
+
+  grid:
+    time_index:
+      type: range
+      min: 0
+      max: 104
+      step: 1
+
+white7:
+  fixed:
+    dataset_name: White
+    forecast_length: 7
+
+  grid:
+    time_index:
+      type: range
+      min: 0
+      max: 208
+      step: 1

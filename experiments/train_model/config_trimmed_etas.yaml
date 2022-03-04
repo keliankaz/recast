@@ -1,0 +1,38 @@
+seml:
+  executable: experiments/train_model/train_model.py
+  name: eq_trimmed
+  output_dir: slurm_output/
+  project_root_dir: ../..
+
+slurm:
+  experiments_per_job: 1
+  sbatch_options:
+    gres: gpu:1       # num GPUs
+    mem: 32G          # memory
+    cpus-per-task: 3  # num cores
+    time: 0-05:00      # max time, D-HH:MM
+    partition: gpu_large
+
+fixed:
+  max_epochs: 1500
+  patience: 200
+  learning_rate: 5e-2
+  wandb_entity: eq-ntpp
+  wandb_project: release
+  model_name: ETAS
+  dataset_name: White
+  use_double_precision: True
+  minibatch_training: True
+
+grid:
+  train_fraction:
+    type: loguniform
+    min: 0.01
+    max: 1.0
+    num: 10
+
+  random_seed:
+    type: range
+    min: 0
+    max: 5
+    step: 1
