@@ -1,5 +1,5 @@
 # Flexible and Scalable Earthquake Forecasting
-This repository includes the reference material for *Flexible and Scalable Earthquake Forecasting* by Kelian Dascher-Cousineau, Oleksandr Shchur, Emily Brodsky and Stephan Günnemann. Neural Temporal Point Process (NTPP) models provide an alternative approach to earthquake forecasting. Here, present an implementation of an NTPP, the Recurrent Earthquake foreCAST (RECAST).
+This repository includes the reference material for *Using deep-learning for flexible and scalable earthquake forecasting* by Kelian Dascher-Cousineau, Oleksandr Shchur, Emily Brodsky and Stephan Günnemann. Neural Temporal Point Process (NTPP) models provide an alternative approach to earthquake forecasting. Here, present an implementation of an NTPP, the Recurrent Earthquake foreCAST (RECAST).
 
 The code includes:
 
@@ -91,12 +91,12 @@ eq.visualization.visualize_trajectories(test_seq, forecast)
 
 ## Available eartquake catalogs
 The code includes the following earthquake catalogs for Southern California that we used in our experiments.
-| Catalog name | Catalog start | Catalog end | # events | Magnitude of completness |
-| --- | --- | --- | --- | --- |
-| [`eq.catalogs.White`](https://data.mendeley.com/datasets/7ywkdx7c62/1) | 2008-01 | 2021-01 | 134975 | 0.6 |
-| [`eq.catalogs.SCEDC`](https://service.scedc.caltech.edu/ftp/catalogs/SCEC_DC/) | 1981-01 | 2020-01 | 125421 | 2.0 |
-| [`eq.catalogs.QTMSaltonSea`](https://service.scedc.caltech.edu/ftp/QTMcatalog/qtm_final_12dev.hypo) | 2008-01 | 2018-01 | 44133 | 1.0 |
-| [`eq.catalogs.QTMSanJacinto`](https://service.scedc.caltech.edu/ftp/QTMcatalog/qtm_final_12dev.hypo) | 2008-01 | 2018-01 | 20790 | 1.0 |
+| Catalog name                                                                                         | Catalog start | Catalog end | # events | Magnitude of completness |
+| ---------------------------------------------------------------------------------------------------- | ------------- | ----------- | -------- | ------------------------ |
+| [`eq.catalogs.White`](https://data.mendeley.com/datasets/7ywkdx7c62/1)                               | 2008-01       | 2021-01     | 134975   | 0.6                      |
+| [`eq.catalogs.SCEDC`](https://service.scedc.caltech.edu/ftp/catalogs/SCEC_DC/)                       | 1981-01       | 2020-01     | 125421   | 2.0                      |
+| [`eq.catalogs.QTMSaltonSea`](https://service.scedc.caltech.edu/ftp/QTMcatalog/qtm_final_12dev.hypo)  | 2008-01       | 2018-01     | 44133    | 1.0                      |
+| [`eq.catalogs.QTMSanJacinto`](https://service.scedc.caltech.edu/ftp/QTMcatalog/qtm_final_12dev.hypo) | 2008-01       | 2018-01     | 20790    | 1.0                      |
 
 In addition, the following synthetic catalogs were used in the experiments
 - `eq.catalogs.ETAS_SingleCatalog`: One long catalog produced by the ETAS model.
