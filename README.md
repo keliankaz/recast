@@ -4,7 +4,7 @@ This repository includes the reference material for *Using deep-learning for fle
 The code includes:
 
 1. Model definitions for both ETAS and the NTPP implementation: RECAST in the `eq` Python library.
-2. Scripts for model training in the featured experiements in `experiements/`.
+2. Scripts for model training in the featured experiments in `experiments/`.
 3. Tutorials explaning how the code works: `notebooks/1. Training the model.ipynb` and `notebooks/2. Forecasting.ipynb`
 3. Jupyter Notebooks to reproduce figures 2-4 in `notebooks/generate_figures/`.
 4. The trained models in `trained_models/`.
