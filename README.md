@@ -1,13 +1,13 @@
 # Flexible and Scalable Earthquake Forecasting
-This repository includes the reference material for *Using deep-learning for flexible and scalable earthquake forecasting* by Kelian Dascher-Cousineau, Oleksandr Shchur, Emily Brodsky and Stephan Günnemann. Neural Temporal Point Process (NTPP) models provide an alternative approach to earthquake forecasting. Here, present an implementation of an NTPP, the Recurrent Earthquake foreCAST (RECAST).
+This repository includes the reference material for *Using deep-learning for flexible and scalable earthquake forecasting* by Kelian Dascher-Cousineau, Oleksandr Shchur, Emily Brodsky, and Stephan Günnemann. Neural Temporal Point Process (NTPP) models provide an alternative approach to earthquake forecasting. Here, present an implementation of an NTPP, the Recurrent Earthquake foreCAST (RECAST).
 
 The code includes:
 
-1. Model definitions for both ETAS and the NTPP implementation: RECAST in the `eq` Python library.
-2. Scripts for model training in the featured experiments in `experiments/`.
-3. Tutorials explaning how the code works: `notebooks/1. Training the model.ipynb` and `notebooks/2. Forecasting.ipynb`
-3. Jupyter Notebooks to reproduce figures 2-4 in `notebooks/generate_figures/`.
-4. The trained models in `trained_models/`.
+1. Model definitions for both ETAS and the NTPP implementation: RECAST in the `eq` Python library 
+2. Scripts for model training in the featured experiments in `experiments/`
+3. Tutorials explaining how the code works: `notebooks/1. Training the model.ipynb`, `notebooks/2. Forecasting.ipynb`, and  `notebooks/3. (Experimental) training with extra features.ipynb`
+3. Jupyter Notebooks to reproduce figures 2-4 in `notebooks/generate_figures/`
+4. The trained models in `trained_models/`
 
 ## Reproducing the results
 To reproduce the experimental results from the paper, please see the file `REPRODUCE.md`.
@@ -34,7 +34,7 @@ The code has been tested on Linux (Ubuntu 20.04) and MacOS.
 
 ## Examples
 ### Training the model
-Simple example of training an NTPP model via maximum likelihood.
+A simple example of training an NTPP model via maximum likelihood.
 ```python
 import eq
 import pytorch_lightning as pl
@@ -89,7 +89,7 @@ eq.visualization.visualize_trajectories(test_seq, forecast)
 - `eq.models.ETAS`: The classic Epidemic Type Aftershock Sequence (ETAS) model.
 - `eq.models.RecurrentTPP`: Neural Temporal Point Process (NTPP) model proposed in the paper.
 
-## Available eartquake catalogs
+## Available earthquake catalogs
 The code includes the following earthquake catalogs for Southern California that we used in our experiments.
 | Catalog name                                                                                         | Catalog start | Catalog end | # events | Magnitude of completness |
 | ---------------------------------------------------------------------------------------------------- | ------------- | ----------- | -------- | ------------------------ |
@@ -100,5 +100,5 @@ The code includes the following earthquake catalogs for Southern California that
 
 In addition, the following synthetic catalogs were used in the experiments
 - `eq.catalogs.ETAS_SingleCatalog`: One long catalog produced by the ETAS model.
-- `eq.catalogs.ETAS_MultiCatalog`: Multiple short catalogs produces by the ETAS model.
+- `eq.catalogs.ETAS_MultiCatalog`: Multiple short catalogs produced by the ETAS model.
 
