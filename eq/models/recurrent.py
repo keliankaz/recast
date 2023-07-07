@@ -17,6 +17,7 @@ class RecurrentTPP(TPPModel):
     Args:
         input_magnitude: Should magnitude be used as model input?
         predict_magnitude: Should the model predict the magnitude?
+        num_extra_features: Number of extra features to use as input.
         context_size: Size of the RNN hidden state.
         num_components: Number of mixture components in the output distribution.
         rnn_type: Type of the RNN. Possible choices {'GRU', 'RNN'}
@@ -32,6 +33,7 @@ class RecurrentTPP(TPPModel):
         self,
         input_magnitude: bool = True,
         predict_magnitude: bool = True,
+        num_extra_features: Optional[int] = None,
         context_size: int = 32,
         num_components: int = 32,
         rnn_type: str = "GRU",
@@ -45,6 +47,7 @@ class RecurrentTPP(TPPModel):
         super().__init__()
         self.input_magnitude = input_magnitude
         self.predict_magnitude = predict_magnitude
+        self.num_extra_features = num_extra_features
         self.context_size = context_size
         self.num_components = num_components
         self.register_buffer("tau_mean", torch.tensor(tau_mean, dtype=torch.float32))
@@ -70,7 +73,12 @@ class RecurrentTPP(TPPModel):
             raise ValueError(
                 f"rnn_type must be one of ['RNN', 'GRU'] " f"(got {rnn_type})"
             )
-        self.num_rnn_inputs = 1 + int(input_magnitude)
+        self.num_rnn_inputs = (
+            1  # inter-event times
+            + int(input_magnitude)  # magnitude features
+            + int(num_extra_features is not None) * num_extra_features  # extra feat
+        )
+
         self.rnn = getattr(nn, rnn_type)(
             self.num_rnn_inputs, context_size, batch_first=True
         )
@@ -87,6 +95,13 @@ class RecurrentTPP(TPPModel):
         # output has shape (..., 1)
         return mag.unsqueeze(-1) - self.mag_mean
 
+    def encode_extra_features(self, extra_feat):
+        # Place holder for any encoding of extra features that may be needed
+        # e.g. normalization, log-transform, aggregation, etc.
+        # extra_feat has shape (..., num_extra_features)
+        # output has shape (..., num_extra_features)
+        return extra_feat
+
     def get_context(self, batch):
         """Get context embedding for each event in the batch of padded sequences.
 
@@ -96,6 +111,8 @@ class RecurrentTPP(TPPModel):
         feat_list = [self.encode_time(batch.inter_times)]
         if self.input_magnitude:
             feat_list.append(self.encode_magnitude(batch.mag))
+        if self.num_extra_features is not None:
+            feat_list.append(self.encode_extra_features(batch.extra_feat))
         features = torch.cat(feat_list, dim=-1)
 
         rnn_output = self.rnn(features)[0][:, :-1, :]
@@ -123,8 +140,6 @@ class RecurrentTPP(TPPModel):
         )
 
     def get_magnitude_dist(self, context):
-        # TODO: log_rate isn't used, the magnitude distribution isn't conditioned on
-        # the history
         log_rate = self.hypernet_mag(context).squeeze(-1)  # (B, L)
         b = self.richter_b * torch.ones_like(log_rate)
         mag_min = self.mag_completeness * torch.ones_like(log_rate)
@@ -193,6 +208,9 @@ class RecurrentTPP(TPPModel):
             raise ValueError(
                 "Sampling is impossible if input_magnitude != predict_magnitude"
             )
+        if self.num_extra_features is not None:
+            raise ValueError("Sampling is not currently supported for extra features")
+
         if past_seq is not None:
             t_start = past_seq.t_end
             past_batch = eq.data.Batch.from_list([past_seq])
