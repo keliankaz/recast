@@ -75,8 +75,8 @@ class RecurrentTPP(TPPModel):
             )
         self.num_rnn_inputs = (
             1  # inter-event times
-            + int(input_magnitude)  # magnitude features
-            + int(num_extra_features is not None) * num_extra_features  # extra feat
+            + int(self.input_magnitude)  # magnitude features
+            + 0 if self.num_extra_features is None else self.num_extra_features
         )
 
         self.rnn = getattr(nn, rnn_type)(
