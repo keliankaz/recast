@@ -19,7 +19,7 @@ comment.cut
 *.blg
 *.bbl
 
-# Jupyter
+# Jupyter notebooks
 *.ipynb_checkpoints
 
 .idea/
