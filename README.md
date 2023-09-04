@@ -10,7 +10,7 @@ The code includes:
 4. The trained models in `trained_models/`
 
 ## Reproducing the results
-To reproduce the experimental results from the paper, please see the file `REPRODUCE.md`.
+To reproduce the experimental results from the paper, please see the file `REPRODUCE.md`.   
 
 ## Installation
 The code has been tested on Linux (Ubuntu 20.04) and MacOS.
