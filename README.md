@@ -1,5 +1,5 @@
 # Flexible and Scalable Earthquake Forecasting
-This repository includes the reference material for *Using deep-learning for flexible and scalable earthquake forecasting* by Kelian Dascher-Cousineau, Oleksandr Shchur, Emily Brodsky, and Stephan Günnemann. Neural Temporal Point Process (NTPP) models provide an alternative approach to earthquake forecasting. Here, present an implementation of an NTPP, the Recurrent Earthquake foreCAST (RECAST).
+This repository includes the reference material for *Using deep-learning for flexible and scalable earthquake forecasting* by Kelian Dascher-Cousineau, Oleksandr Shchur, Emily Brodsky, and Stephan Günnemann. Neural Temporal Point Process (NTPP) models provide an alternative approach to earthquake forecasting. Here, we present an implementation of an NTPP, the Recurrent Earthquake foreCAST (RECAST).
 
 The code includes:
 
@@ -17,7 +17,7 @@ The code has been tested on Linux (Ubuntu 20.04) and MacOS.
 1. Make sure you have the latest version of [`conda`](https://docs.conda.io/en/latest/miniconda.html) installed.
 2. Install the dependencies and create a new conda environment.
     ```bash
-    cd earthquake-ntpp
+    cd recast
     conda env create -f environment.yml
     conda activate eq
     ```
@@ -49,7 +49,7 @@ dl_test = catalog.test.get_dataloader()
 
 # Initialize and train the model
 ntpp_model = eq.models.RecurrentTPP()
-trainer = pl.Trainer(gpus=1, max_epochs=200)
+trainer = pl.Trainer(max_epochs=200)
 trainer.fit(ntpp_model, dl_train)
 
 # Compute negative log-likelihood on the test set
