@@ -7,6 +7,56 @@ import torch
 from .dot_dict import DotDict
 
 
+class ContinuousMarks:
+    """Mark associated with an event.
+
+    TPP marks seem to have a recurring pattern. Namely, they involve a set of values
+    that exist within a bounds. In many cases, it is useful to evaluate the negative log-likelihood (NLL) on a
+    subset of the bounds.
+
+    Examples:
+        - Magnitude: The bounds is [Mc,Mmax] but the NLL may be evaluated on the interval [Mmin, Mmax].
+        - Location: The bounds delimited by a convex hull specified by set of knots. The NLL may be evaluated in a subregion.
+        - Time: The bounds is [t_start, t_end] but the NLL may be evaluated on the interval [t_nll_start, t_end].
+
+    Shared among all marks is that the boundss has dimensions R^d x R^n where d is the number of
+    dimensions associated with the marks and n >= d+1 to bound the marks bounds.
+
+    Args:
+        name: Name of the mark.
+        values: Values associated with the mark.
+        bounds: bounds associated with the mark.
+        nll_bounds: bounds on which the NLL is evaluated.
+
+    Example:
+        >>> marks = ContinuousMarks([4.0, 2.1, 2.5, 2.9], bounds=[2.0, 5.0], nll_bounds=[2.5, 5.0])
+
+    """
+
+    def __init__(
+        self,
+        values: Union[torch.Tensor, np.ndarray, list],
+        bounds: Optional[Union[torch.Tensor, np.ndarray, list]] = None,
+        nll_bounds: Optional[Union[torch.Tensor, np.ndarray, list]] = None,
+    ):
+        self.values = values
+        self.bounds = bounds
+
+        if nll_bounds is None:
+            self.nll_bounds = bounds
+
+        self._validate_args()
+
+    def _validate_args(self):
+        assert (
+            np.atleast_2d(self.bounds).shape[0] == np.atleast_2d(self.values).shape[0]
+        ), "bounds must share the same dimension as the values"
+        assert (
+            np.atleast_2d(self.bounds).shape[1]
+            >= np.atleast_2d(self.values).shape[0] + 1
+        ), "bounds must have at least one more dimension than the values"
+
+
 class Sequence(DotDict):
     """Sequence of events (potentially with marks).
 
@@ -67,6 +117,10 @@ class Sequence(DotDict):
         self.t_nll_start = float(t_nll_start)
 
         for key, value in kwargs.items():
+            if type(value) is ContinuousMarks:
+                self[key] = torch.as_tensor(value.values)
+                self[key + "_bounds"] = torch.as_tensor(value.bounds)
+
             self[key] = torch.as_tensor(value)
 
         self._validate_args()

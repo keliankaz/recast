@@ -2,6 +2,7 @@ from typing import Optional, Tuple
 
 import pytorch_lightning as pl
 import torch
+from contextlib import nullcontext
 
 import eq
 
@@ -19,7 +20,7 @@ class TPPModel(pl.LightningModule):
             batch: Batch of padded event sequences.
 
         Returns:
-            nll: NLL of each sequence, shape (batch_size,)
+            nll: NLL of each sequence, shape (batch_size,) or dict with multiple NLL each with shape (batch_size)
         """
         raise NotImplementedError
 
@@ -81,37 +82,53 @@ class TPPModel(pl.LightningModule):
         raise NotImplementedError
 
     def training_step(self, batch, batch_idx):
-        loss = self.nll_loss(batch).mean()
-        self.log(
-            "train_loss",
-            loss,
-            on_step=False,
-            on_epoch=True,
-            batch_size=batch.batch_size,
-        )
-        return loss
+        total_loss = self.step(batch, "train")
+        return total_loss
 
     def validation_step(self, batch, batch_idx):
-        with torch.no_grad():
-            loss = self.nll_loss(batch).mean()
+        total_loss = self.step(batch, "val", no_grad=True)
+        return total_loss
+
+    def test_step(self, batch, batch_idx, dataset_idx=None):
+        total_loss = self.step(batch, "test", no_grad=True)
+        return total_loss
+
+    def step(self, batch, prefix, no_grad=False):
+        with torch.no_grad() if no_grad else nullcontext():
+            loss = self.nll_loss(batch)
+
+        if type(loss) is dict:
+            for k, v in loss.items():
+                self.log(
+                    f"{prefix}_{k}",
+                    v.mean(),
+                    on_step=False,
+                    on_epoch=True,
+                    batch_size=batch.batch_size,
+                )
+            total_loss = torch.matmul(
+                torch.cat([v for v in loss.values()]), self.loss_weights.to(self.device)
+            ).mean()
+        else:
+            total_loss = loss.mean()
+
+            self.log(
+                f"{prefix}_loss",
+                total_loss,
+                on_step=False,
+                on_epoch=True,
+                batch_size=batch.batch_size,
+            )
+
         self.log(
-            "val_loss",
-            loss.item(),
+            f"total_{prefix}_loss",
+            torch.Tensor([total_loss]),
             on_step=False,
             on_epoch=True,
             batch_size=batch.batch_size,
         )
 
-    def test_step(self, batch, batch_idx, dataset_idx=None):
-        with torch.no_grad():
-            loss = self.nll_loss(batch).mean()
-        self.log(
-            "test_loss",
-            loss,
-            on_step=False,
-            on_epoch=True,
-            batch_size=batch.batch_size,
-        )
+        return total_loss
 
     def configure_optimizers(self):
         if hasattr(self, "learning_rate"):
