@@ -28,4 +28,4 @@ comment.cut
 .DS_Store
 
 *lightning_logs
-notebooks/exploratory/*
+*exploratory/*
