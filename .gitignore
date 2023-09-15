@@ -28,4 +28,4 @@ comment.cut
 .DS_Store
 
 *lightning_logs
-*/home/gcl/RB/kdascher/Projects/DS_Discovery/recast/notebooks/exploratory
+notebooks/exploratory/*
