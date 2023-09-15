@@ -1,4 +1,4 @@
-name: eq  
+name: DS_DISCOVERY  
 channels:
   - pytorch
   - defaults
@@ -19,6 +19,8 @@ dependencies:
   - urllib3
   - scikit-learn
   - obspy
+  - cudatoolkit
+  - pip
   - pip:
     - pytorch-lightning
     - setuptools
