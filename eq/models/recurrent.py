@@ -80,7 +80,7 @@ class RecurrentTPP(TPPModel):
         )
 
         self.rnn = getattr(nn, rnn_type)(
-            self.num_rnn_inputs, context_size, batch_first=True, num_layers=2
+            self.num_rnn_inputs, context_size, batch_first=True,
         )
         self.dropout = nn.Dropout(dropout_proba)
 
