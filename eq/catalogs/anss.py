@@ -171,8 +171,6 @@ class ANSS_MultiCatalog(Catalog):
         """
         print("Downloading...")
 
-        client = Client("IRIS")
-
         set_names = ["train", "val", "test"]
         for i_set in set_names:
             print(i_set)

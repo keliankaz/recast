@@ -80,7 +80,9 @@ class RecurrentTPP(TPPModel):
         )
 
         self.rnn = getattr(nn, rnn_type)(
-            self.num_rnn_inputs, context_size, batch_first=True,
+            self.num_rnn_inputs,
+            context_size,
+            batch_first=True,
         )
         self.dropout = nn.Dropout(dropout_proba)
 
@@ -239,7 +241,9 @@ class RecurrentTPP(TPPModel):
                 )  # (B, 1)
                 next_inter_times -= time_remaining
                 time_remaining = None
-            next_inter_times.clamp_max_(t_end - t_start)
+            next_inter_times.clamp_max_(
+                t_end - t_start
+            )  # BUG: (?) creates samples of len 1 instead of zero
             inter_times = torch.cat([inter_times, next_inter_times], dim=1)  # (B, L)
             # Prepare RNN input
             rnn_input_list = [self.encode_time(next_inter_times)]
@@ -261,7 +265,9 @@ class RecurrentTPP(TPPModel):
 
         duration = t_end - t_start
         unclipped_arrival_times = inter_times.cumsum(-1)  # (B, L)
-        padding_mask = unclipped_arrival_times > duration
+        padding_mask = (
+            unclipped_arrival_times >= duration
+        )  # BUG: ATTEMPTED FIX (> to >=) - clipped values should be masked out
         inter_times = torch.masked_fill(inter_times, padding_mask, 0.0)
         end_idx = (1 - padding_mask.long()).sum(-1)
         last_surv_time = duration - inter_times.sum(-1)
