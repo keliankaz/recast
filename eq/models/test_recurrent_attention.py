@@ -13,9 +13,14 @@ inter_times = np.diff(arrival_times, prepend=[t_start], append=[t_end])
 seq = eq.data.Sequence(inter_times, t_start=0.0, mag=mag)
 
 catalog = eq.catalogs.White()
-batch = next(iter(catalog.train.get_dataloader())) # eq.data.Batch.from_list([seq])
+batch_list = []
+for _ in range(10):
+    batch = next(iter(catalog.train.get_dataloader())) # eq.data.Batch.from_list([seq])
+    batch_list.append(batch)
+batch_multiple = eq.data.Batch.from_list(batch_list)
 print("NO ERROR")
 model = RecurrentTPP_Attention()
-context = model.get_context(batch)
+context = model.get_context(batch_multiple)
+distr = model.get_inter_time_dist(context)
 print("finish")
 # %%
