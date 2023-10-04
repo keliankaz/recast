@@ -122,7 +122,7 @@ class RecurrentTPP_Attention(TPPModel):
 
         # rnn_output = self.rnn(features)[0][:, :-1, :]
         rnn_output = self.rnn(features)[0] # check size
-        attention_output = self.multihead_attn(rnn_output, rnn_output, rnn_output, is_causal=True) #TODO should be (B, L, C), testing/reading about is_causal
+        attention_output = self.multihead_attn(rnn_output, rnn_output, rnn_output)[0] #TODO should be (B, L, C), testing/reading about is_causal
         # see https://stats.stackexchange.com/questions/421935/what-exactly-are-keys-queries-and-values-in-attention-mechanisms#:~:text=The%20short%20answer%20is%20that,K%2C%20V%20are%20first%20introduced.
         # for a discussion of where to get Q, K, V values. It is possible that we should fetch V differently!
         assert len(attention_output.shape) == 3, f"attention_output's shape is {attention_output.shape}"
