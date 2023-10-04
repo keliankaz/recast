@@ -8,7 +8,7 @@ from torch.distributions import Categorical
 import eq
 import eq.distributions as dist
 
-from .tpp_model import TPPModel
+from eq.models.tpp_model import TPPModel
 
 
 class RecurrentTPP(TPPModel):
