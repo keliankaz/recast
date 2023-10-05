@@ -4,7 +4,7 @@ from typing import Optional, Union
 import numpy as np
 import torch
 
-from .dot_dict import DotDict
+from eq.data.dot_dict import DotDict
 
 
 class ContinuousMarks:
@@ -44,6 +44,8 @@ class ContinuousMarks:
 
         if nll_bounds is None:
             self.nll_bounds = bounds
+        else:
+            self.nll_bounds = nll_bounds
 
         self._validate_args()
 
@@ -120,8 +122,9 @@ class Sequence(DotDict):
             if type(value) is ContinuousMarks:
                 self[key] = torch.as_tensor(value.values)
                 self[key + "_bounds"] = torch.as_tensor(value.bounds)
-
-            self[key] = torch.as_tensor(value)
+                self[key + "_nll_bounds"] = torch.as_tensor(value.nll_bounds)
+            else:
+                self[key] = torch.as_tensor(value)
 
         self._validate_args()
         # Move all tensors to the same device as inter_times
@@ -211,7 +214,11 @@ class Sequence(DotDict):
             )
 
         for key, value in self.items():
-            if key not in self.default_sequence_attrs and value.shape[0] != len(self):
+            if (
+                key not in self.default_sequence_attrs
+                and value.shape[0] != len(self)
+                and not "_bound" in key
+            ):
                 raise ValueError(
                     f"Attribute {key} must have shape [{len(self)}, ...] (got {list(value.shape)})"
                 )
