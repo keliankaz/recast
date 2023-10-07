@@ -7,7 +7,7 @@ import pandas as pd
 import requests
 import torch
 
-from eq.data import Catalog, InMemoryDataset, Sequence, default_catalogs_dir
+from eq.data import Catalog, InMemoryDataset, Sequence, ContinuousMarks, default_catalogs_dir
 
 from .utils import train_val_test_split_sequence
 
@@ -108,7 +108,7 @@ class White(Catalog):
         seq = Sequence(
             inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
             t_start=t_start,
-            mag=torch.as_tensor(mag, dtype=torch.float32),
+            mag=ContinuousMarks(mag,[self.metadata["mag_completeness"],10]),
         )
         dataset = InMemoryDataset(sequences=[seq])
 

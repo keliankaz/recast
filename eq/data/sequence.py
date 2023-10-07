@@ -104,7 +104,7 @@ class Sequence(DotDict):
         **kwargs,
     ):
         super().__init__()
-        self.inter_times = torch.flatten(torch.as_tensor(inter_times))
+        self.inter_times = torch.flatten(torch.as_tensor(inter_times,dtype=torch.float32))
         if not self.inter_times.dtype in [torch.float32, torch.float64]:
             raise ValueError(
                 f"inter_times must be of type torch.float32 or torch.float64 "
@@ -120,11 +120,11 @@ class Sequence(DotDict):
 
         for key, value in kwargs.items():
             if type(value) is ContinuousMarks:
-                self[key] = torch.as_tensor(value.values)
+                self[key] = torch.as_tensor(value.values,dtype=torch.float32)
                 self[key + "_bounds"] = torch.as_tensor(value.bounds)
                 self[key + "_nll_bounds"] = torch.as_tensor(value.nll_bounds)
             else:
-                self[key] = torch.as_tensor(value)
+                self[key] = torch.as_tensor(value,dtype=torch.float32)
 
         self._validate_args()
         # Move all tensors to the same device as inter_times
@@ -179,7 +179,10 @@ class Sequence(DotDict):
         other_attr = {}
         for key, value in self.items():
             if key not in self.default_sequence_attrs:
-                other_attr[key] = value[mask].contiguous()
+                if 'bounds' in key:
+                    other_attr[key] = value
+                else: 
+                    other_attr[key] = value[mask].contiguous()
 
         return Sequence(
             inter_times=new_inter_times,

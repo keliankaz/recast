@@ -7,7 +7,7 @@ import pandas as pd
 import requests
 import torch
 
-from eq.data import Catalog, InMemoryDataset, Sequence
+from eq.data import Catalog, InMemoryDataset, Sequence, ContinuousMarks
 
 from .utils import train_val_test_split_sequence
 
@@ -109,7 +109,7 @@ class Hauksson(Catalog):
         mag = subset_df["magnitude"].values
         seq = Sequence(
             inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
-            mag=torch.as_tensor(mag, dtype=torch.float32),
+            mag=ContinuousMarks(mag,[self.metadata["mag_completeness"],10]),
         )
         dataset = InMemoryDataset(sequences=[seq])
         dataset.save_to_disk(self.root_dir / "full_sequence.pt")

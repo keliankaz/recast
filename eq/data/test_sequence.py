@@ -1,6 +1,7 @@
 # %%
 import eq
 import numpy as np
+import torch
 
 # %%
 t_start = 10.0
@@ -12,3 +13,25 @@ mag = eq.data.ContinuousMarks(
 )
 inter_times = np.diff(arrival_times, prepend=[t_start], append=[t_end])
 seq = eq.data.Sequence(inter_times, t_start=0.0, mag=mag)
+
+batch = eq.data.Batch.from_list(2*[seq])
+model = eq.models.RecurrentTPP()
+model.get_context(batch)
+print('end')
+# model = eq.models.RecurrentTPP()
+
+# %%
+epochs = 5
+
+running_training_loss = []
+optimizer = torch.optim.Adam(model.parameters(), lr=3e-3)
+
+for _ in range(epochs):
+    optimizer.zero_grad()                           # zero the gradient buffers
+    nll = model.nll_loss(batch)["nll_time"]         # compute the loss
+    nll.backward()                                  # compute the gradients
+    optimizer.step()                                # update the weights
+    running_training_loss.append(nll.item())        # save the training loss
+
+      
+# %%

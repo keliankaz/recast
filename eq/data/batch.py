@@ -78,11 +78,11 @@ class Batch(DotDict):
         start_idx = get_start_idx(arrival_times, t_nll_start)
         mask = get_mask(inter_times, start_idx, end_idx)
 
-        # Handle other attributes (e.g., marks, locations)
+        # Handle other attributes (e.g., marks, locations) 
         other_attr_names = [
             k
             for k in sequences[0].keys()
-            if k not in sequences[0].default_sequence_attrs
+            if k not in sequences[0].default_sequence_attrs and 'bounds' not in k
         ]
         other_attr = {}
         for name in other_attr_names:
@@ -91,6 +91,19 @@ class Batch(DotDict):
             other_attr[name] = pad_sequence(
                 values, padding_value=0, max_len=padded_seq_len
             )
+            
+        # Handle bounds (e.g. mark_bounds, mark_nll_bounds)
+        other_bounds = {}
+        other_attr_names = [
+            k
+            for k in sequences[0].keys()
+            if 'bounds' in k
+        ]
+        for k in other_attr_names:
+            other_bounds[k] = torch.zeros([batch_size,2], dtype=dtype, device=device)
+            for i, seq in enumerate(sequences):
+                other_bounds[k][i,:] = seq[k]
+        
 
         return Batch(
             inter_times=inter_times,
@@ -102,6 +115,7 @@ class Batch(DotDict):
             start_idx=start_idx,
             end_idx=end_idx,
             **other_attr,
+            **other_bounds,
         )
 
     @property
@@ -123,7 +137,10 @@ class Batch(DotDict):
         other_attr = {}
         for k in self.keys():
             if k not in self.default_batch_attrs:
-                other_attr[k] = self[k][idx, :length].clone()
+                if 'bounds' in k: 
+                    other_attr[k] = self[k][idx]
+                else:
+                    other_attr[k] = self[k][idx, :length].clone()
         return Sequence(
             inter_times=inter_times,
             t_start=t_start,
