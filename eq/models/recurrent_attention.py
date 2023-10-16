@@ -11,8 +11,9 @@ import eq.distributions as dist
 from eq.models.tpp_model import TPPModel
 
 
-class RecurrentTPP(TPPModel):
-    """Neural TPP model with an recurrent encoder.
+class RecurrentTPP_Attention(TPPModel):
+    """Neural TPP model with an recurrent encoder and a multihead
+    attention. STILL UNDER DEVELOPMENT
 
     Args:
         input_magnitude: Should magnitude be used as model input?
@@ -23,7 +24,7 @@ class RecurrentTPP(TPPModel):
         rnn_type: Type of the RNN. Possible choices {'GRU', 'RNN'}
         dropout_proba: Dropout probability.
         tau_mean: Mean inter-event times in the dataset.
-        mag_mean: Mean earthquake magnitude in the dataset.                             # FLAG
+        mag_mean: Mean earthquake magnitude in the dataset.
         richter_b: Fixed b value of the Gutenberg-Richter distribution for magnitudes.
         mag_completeness: Magnitude of completeness of the catalog.
         learning_rate: Learning rate used in optimization.
@@ -39,7 +40,9 @@ class RecurrentTPP(TPPModel):
         rnn_type: str = "GRU",
         dropout_proba: float = 0.5,
         tau_mean: float = 1.0,
+        mag_mean: float = 0.0,
         richter_b: float = 1.0,
+        mag_completeness: float = 2.0,
         learning_rate: float = 5e-2,
     ):
         super().__init__()
@@ -48,9 +51,13 @@ class RecurrentTPP(TPPModel):
         self.num_extra_features = num_extra_features
         self.context_size = context_size
         self.num_components = num_components
-        self.register_buffer("tau_mean", torch.tensor(tau_mean, dtype=torch.float64))
+        self.register_buffer("tau_mean", torch.tensor(tau_mean, dtype=torch.float32))
         self.register_buffer("log_tau_mean", self.tau_mean.log())
-        self.register_buffer("richter_b", torch.tensor(richter_b, dtype=torch.float64))
+        self.register_buffer("mag_mean", torch.tensor(mag_mean, dtype=torch.float32))
+        self.register_buffer("richter_b", torch.tensor(richter_b, dtype=torch.float32))
+        self.register_buffer(
+            "mag_completeness", torch.tensor(mag_completeness, dtype=torch.float32)
+        )
         self.learning_rate = learning_rate
 
         # Decoder for the time distribution
@@ -68,18 +75,19 @@ class RecurrentTPP(TPPModel):
                 f"rnn_type must be one of ['RNN', 'GRU'] " f"(got {rnn_type})"
             )
         self.num_rnn_inputs = (
-            1 + int(self.input_magnitude) + (
-                0  if self.num_extra_features is None
-                else self.num_extra_features
-            )
+            1 + int(self.input_magnitude) + 0  # inter-event times  # magnitude features
+            if self.num_extra_features is None
+            else self.num_extra_features
         )
 
         self.rnn = getattr(nn, rnn_type)(
-            self.num_rnn_inputs,
-            context_size,
-            batch_first=True,
+            self.num_rnn_inputs, context_size, batch_first=True,
         )
         self.dropout = nn.Dropout(dropout_proba)
+
+        # num_heads = 4
+        assert context_size % 4 == 0, f"context size={context_size} should be divisible by num_heads={4}"
+        self.multihead_attn = nn.MultiheadAttention(embed_dim=context_size, num_heads=4, batch_first=True) # unsure about embed_dim
 
     def encode_time(self, inter_times):
         # inter_times has shape (...)
@@ -87,15 +95,10 @@ class RecurrentTPP(TPPModel):
         log_tau = torch.log(torch.clamp_min(inter_times, 1e-10)).unsqueeze(-1)
         return log_tau - self.log_tau_mean
 
-    def encode_magnitude(self, mag, mag_completeness: Union[float,torch.tensor]):
+    def encode_magnitude(self, mag):
         # mag has shape (...)
-        # mag_co,pleteness 
         # output has shape (..., 1)
-        if type(mag) is float:
-            out = mag.unsqueeze(-1) - mag_completeness
-        else:
-            out = (mag - mag_completeness.unsqueeze(1)).unsqueeze(-1)
-        return out
+        return mag.unsqueeze(-1) - self.mag_mean
 
     def encode_extra_features(self, extra_feat):
         # Place holder for any encoding of extra features that may be needed
@@ -112,13 +115,19 @@ class RecurrentTPP(TPPModel):
         """
         feat_list = [self.encode_time(batch.inter_times)]
         if self.input_magnitude:
-            feat_list.append(self.encode_magnitude(batch.mag, batch.mag_bounds[:,0]))
+            feat_list.append(self.encode_magnitude(batch.mag))
         if self.num_extra_features is not None:
             feat_list.append(self.encode_extra_features(batch.extra_feat))
         features = torch.cat(feat_list, dim=-1)
 
-        rnn_output = self.rnn(features)[0][:, :-1, :]
-        output = F.pad(rnn_output, (0, 0, 1, 0))  # (B, L, C)
+        # rnn_output = self.rnn(features)[0][:, :-1, :]
+        rnn_output = self.rnn(features)[0] # check size
+        attention_output = self.multihead_attn(rnn_output, rnn_output, rnn_output)[0] #TODO should be (B, L, C), testing/reading about is_causal
+        # see https://stats.stackexchange.com/questions/421935/what-exactly-are-keys-queries-and-values-in-attention-mechanisms#:~:text=The%20short%20answer%20is%20that,K%2C%20V%20are%20first%20introduced.
+        # for a discussion of where to get Q, K, V values. It is possible that we should fetch V differently!
+        assert len(attention_output.shape) == 3, f"attention_output's shape is {attention_output.shape}"
+        truncated_attention_output = attention_output[:, :-1, :]
+        output = F.pad(truncated_attention_output, (0, 0, 1, 0))  # (B, L, C)
         return self.dropout(output)  # (B, L, C)
 
     def get_inter_time_dist(self, context):
@@ -141,11 +150,10 @@ class RecurrentTPP(TPPModel):
             component_distribution=component_dist,
         )
 
-    def get_magnitude_dist(self, context, mag_completeness):
-        """Returns the GutenberRichter distribution for each context.  """
+    def get_magnitude_dist(self, context):
         log_rate = self.hypernet_mag(context).squeeze(-1)  # (B, L)
         b = self.richter_b * torch.ones_like(log_rate)
-        mag_min = mag_completeness.unsqueeze(1) * torch.ones_like(b[0,:])                     # FLAG
+        mag_min = self.mag_completeness * torch.ones_like(log_rate)
         return dist.GutenbergRichter(b=b, mag_min=mag_min)
 
     def nll_loss(self, batch: eq.data.Batch) -> torch.Tensor:
@@ -192,7 +200,6 @@ class RecurrentTPP(TPPModel):
         t_start: float = 0.0,
         past_seq: Optional[eq.data.Sequence] = None,
         return_sequences: bool = False,
-        mag_completeness: Optional[float] = None 
     ) -> Union[eq.data.Batch, List[eq.data.Sequence]]:
         """Simulate a batch of event sequences from the model.
 
@@ -218,10 +225,6 @@ class RecurrentTPP(TPPModel):
         if past_seq is not None:
             t_start = past_seq.t_end
             past_batch = eq.data.Batch.from_list([past_seq])
-            if mag_completeness is not None:
-                assert mag_completeness == past_seq.mag_bounds[0] # TODO: use the mag_completeness to truncate the output. 
-            else:
-                mag_completeness = past_seq.mag_bounds[0]
             current_state = self.get_context(past_batch)[:, [-1], :]  # (1, 1, C)
             current_state = current_state.expand(batch_size, -1, -1)
             time_remaining = past_seq.t_end - past_seq.arrival_times[-1]
@@ -247,18 +250,16 @@ class RecurrentTPP(TPPModel):
                 )  # (B, 1)
                 next_inter_times -= time_remaining
                 time_remaining = None
-            next_inter_times.clamp_max_(
-                t_end - t_start
-            )  # BUG: (?) creates samples of len 1 instead of zero
+            next_inter_times.clamp_max_(t_end - t_start)
             inter_times = torch.cat([inter_times, next_inter_times], dim=1)  # (B, L)
             # Prepare RNN input
             rnn_input_list = [self.encode_time(next_inter_times)]
 
             if self.predict_magnitude:
                 mag_dist = self.get_magnitude_dist(current_state)
-                next_mag = mag_dist.sample()  # (B, 1)                                  # FLAG
+                next_mag = mag_dist.sample()  # (B, 1)
                 magnitudes = torch.cat([magnitudes, next_mag], dim=1)  # (B, L)
-                rnn_input_list.append(self.encode_magnitude(next_mag, mag_completeness))                  # FLAG
+                rnn_input_list.append(self.encode_magnitude(next_mag))
 
             with torch.no_grad():
                 reached = inter_times.sum(-1).min()
@@ -271,9 +272,7 @@ class RecurrentTPP(TPPModel):
 
         duration = t_end - t_start
         unclipped_arrival_times = inter_times.cumsum(-1)  # (B, L)
-        padding_mask = (
-            unclipped_arrival_times >= duration
-        )  # BUG: ATTEMPTED FIX (> to >=) - clipped values should be masked out
+        padding_mask = unclipped_arrival_times > duration
         inter_times = torch.masked_fill(inter_times, padding_mask, 0.0)
         end_idx = (1 - padding_mask.long()).sum(-1)
         last_surv_time = duration - inter_times.sum(-1)
