@@ -8,10 +8,10 @@ from torch.distributions import Categorical
 import eq
 import eq.distributions as dist
 
-from eq.models.tpp_model import TPPModel
+from eq.models.recurrent import RecurrentTPP
 
 
-class RecurrentTPP_Attention(TPPModel):
+class RecurrentTPP_Attention(RecurrentTPP):
     """Neural TPP model with an recurrent encoder and a multihead
     attention. STILL UNDER DEVELOPMENT
 
