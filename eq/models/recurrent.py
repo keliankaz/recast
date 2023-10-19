@@ -89,7 +89,7 @@ class RecurrentTPP(TPPModel):
 
     def encode_magnitude(self, mag, mag_completeness: Union[float,torch.tensor]):
         # mag has shape (...)
-        # mag_co,pleteness 
+        # mag_completeness 
         # output has shape (..., 1)
         if type(mag) is float:
             out = mag.unsqueeze(-1) - mag_completeness
