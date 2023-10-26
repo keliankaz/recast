@@ -14,6 +14,7 @@ from eq.catalogs import ANSS_MultiCatalog
 class CombinedCatalog(Catalog):
     def __init__(self, 
             root_dir: str,
+            anss_config: dict = None,   #flag
             anss_num_sequences: int = 100,
             anss_t_end_days: float = 365,
             anss_radius_kilometers: float = 1000,
@@ -38,7 +39,9 @@ class CombinedCatalog(Catalog):
 
         # Load the sequences from both catalogs
         SCEDC = eq.catalogs.SCEDC(mag_completeness = self.metadata["scedc mag_completeness"])
-        ANSS = eq.catalogs.ANSS_MultiCatalog(num_sequences= self.metadata["anss_num_sequences"], radius_kilometers=self.metadata["radius"], minimum_mainshock_mag=self.metadata["minimum_mainshock_mag"])
+        ANSS = eq.catalogs.ANSS_MultiCatalog(**anss_config) #altered here to use config dict
+            
+        num_sequences= self.metadata["anss_num_sequences"], radius_kilometers=self.metadata["radius"], minimum_mainshock_mag=self.metadata["minimum_mainshock_mag"])
 
         self.scedc_train = SCEDC.train
         self.scedc_val = SCEDC.val
