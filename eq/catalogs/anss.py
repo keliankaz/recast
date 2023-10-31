@@ -149,24 +149,31 @@ class ANSS_MultiCatalog(Catalog):
             mag = local_df.mag.values
             mag = ContinuousMarks(mag, [self.metadata["mag_completeness"], 10])
             depth = local_df.depth.values 
-            if self.metadata['include_depth'] == True:
-                sequences.append(
-                    Sequence(
-                        inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
-                        t_start=t_start,
-                        mag=mag,
-                        extra_feat = torch.as_tensor(depth, dtype=torch.float32)
-                    )
+            # if self.metadata['include_depth'] == True:
+            #     sequences.append(
+            #         Sequence(
+            #             inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
+            #             t_start=t_start,
+            #             mag=mag,
+            #             extra_feat = torch.as_tensor(depth, dtype=torch.float32)
+            #         )
+            #     )
+            # else:
+            #     sequences.append(
+            #         Sequence(
+            #             inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
+            #             t_start=t_start,
+            #             mag=mag,
+            #         )
+            #     )
+            sequences.append(
+                Sequence(
+                    inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
+                    t_start=t_start,
+                    mag=mag,
+                    extra_feat = torch.as_tensor(depth, dtype=torch.float32)
                 )
-            else:
-                sequences.append(
-                    Sequence(
-                        inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
-                        t_start=t_start,
-                        mag=mag,
-                    )
-                )
-
+            )
         return InMemoryDataset(sequences=sequences)
 
     def generate_catalog(self):

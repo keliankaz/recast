@@ -12,58 +12,41 @@ from eq.catalogs import SCEDC
 from eq.catalogs import ANSS_MultiCatalog
 
 class CombinedCatalog(Catalog):
-    def __init__(self, 
-            root_dir: str,
-            anss_config: dict = None,   #flag
-            anss_num_sequences: int = 100,
-            anss_t_end_days: float = 365,
-            anss_radius_kilometers: float = 1000,
-            anss_mag_completeness: float = 5.0,
-            scedc_mag_completeness: float = 2.0,
-            minimum_mainshock_mag: float = 7.0,
-            random_state: int = 123,
-        ):
+    def __init__(self, catalogs):
         # Initialize with metadata for the combined catalog
         metadata = {
-            "name": "ANSS_MultiCatalog",
-            "anss_num_sequences": anss_num_sequences,
-            "t_end": anss_t_end_days,
-            "radius": anss_radius_kilometers,
-            "anss mag_completeness": anss_mag_completeness,
-            "scedc mag_completeness": scedc_mag_completeness,
-            "minimum_mainshock_mag": minimum_mainshock_mag,
-            "random_state": random_state,
+            "catalogs": [catalog.__class__.__name__ for catalog in catalogs]
+            # You might want to add more metadata or information about the combined catalogs here
         }
 
-        super().__init__(root_dir=root_dir, metadata=metadata)
+        super().__init__(root_dir="combined", metadata=metadata)
 
-        # Load the sequences from both catalogs
-        SCEDC = eq.catalogs.SCEDC(mag_completeness = self.metadata["scedc mag_completeness"])
-        ANSS = eq.catalogs.ANSS_MultiCatalog(**anss_config) #altered here to use config dict
-            
-        num_sequences= self.metadata["anss_num_sequences"], radius_kilometers=self.metadata["radius"], minimum_mainshock_mag=self.metadata["minimum_mainshock_mag"])
+        combined_train_sequences = []
+        for catalog in catalogs:
+            combined_train_sequences.extend(catalog.train)
 
-        self.scedc_train = SCEDC.train
-        self.scedc_val = SCEDC.val
-        self.scedc_test = SCEDC.test
-        self.anss_train = ANSS.train
-        self.anss_val = ANSS.val
-        self.anss_test = ANSS.test
+        combined_val_sequences = []
+        for catalog in catalogs:
+            combined_val_sequences.extend(catalog.val)
+        
+        combined_test_sequences = []
+        for catalog in catalogs:
+            combined_test_sequences.extend(catalog.test)
 
-        # Combine the sequences into a single catalog
-        combined_train = InMemoryDataset(
-            sequences=self.scedc_train.sequences + self.anss_train.sequences
-        )
-        combined_val = InMemoryDataset(
-            sequences=self.scedc_val.sequences + self.anss_val.sequences
-        )
-        combined_test = InMemoryDataset(
-            sequences=self.scedc_test.sequences + self.anss_test.sequences
-        )
+        combined_train_data = InMemoryDataset(sequences=combined_train_sequences)
+        combined_val_data = InMemoryDataset(sequences=combined_val_sequences)
+        combined_test_data = InMemoryDataset(sequences=combined_test_sequences)
 
-        self.train = combined_train
-        self.val = combined_val
-        self.test = combined_test
+        dict = {}
+        dict['combined_train'] = combined_train_data
+        dict['combined_val'] = combined_val_data
+        dict['combined_test'] = combined_test_data
+        for catalog in catalogs:
+            name = str(catalog.metadata['name'])
+            dict[name +'_test'] = catalog.test
+        
+        self.combined_info = dict
+
 
     @property
     def required_files(self):
