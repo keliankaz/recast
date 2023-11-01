@@ -21,6 +21,7 @@ class CombinedCatalog(Catalog):
 
         super().__init__(root_dir="combined", metadata=metadata)
 
+
         combined_train_sequences = []
         for catalog in catalogs:
             combined_train_sequences.extend(catalog.train)
@@ -33,9 +34,13 @@ class CombinedCatalog(Catalog):
         for catalog in catalogs:
             combined_test_sequences.extend(catalog.test)
 
-        combined_train_data = InMemoryDataset(sequences=combined_train_sequences)
-        combined_val_data = InMemoryDataset(sequences=combined_val_sequences)
-        combined_test_data = InMemoryDataset(sequences=combined_test_sequences)
+        # min_sequence_length_train = min(len(sequence.arrival_times) for sequence in combined_train_sequences)
+        # min_sequence_length_val = min(len(sequence.arrival_times) for sequence in combined_val_sequences)
+        # min_sequence_length_test = min(len(sequence.arrival_times) for sequence in combined_test_sequences)
+
+        combined_train_data = self.even_sequences(combined_train_sequences, 200)
+        combined_val_data = self.even_sequences(combined_val_sequences, 200)
+        combined_test_data = self.even_sequences(combined_test_sequences, 200)
 
         dict = {}
         dict['combined_train'] = combined_train_data
@@ -47,6 +52,19 @@ class CombinedCatalog(Catalog):
         
         self.combined_info = dict
 
+
+    def even_sequences(self, sequences, target_sequence_length):
+        new_sequences = []
+        for sequence in sequences:
+            if len(sequence.arrival_times) > target_sequence_length:
+                num_segments = (len(sequence.arrival_times) + target_sequence_length - 1) // target_sequence_length
+                for i in range(num_segments):
+                    start = i * target_sequence_length
+                    end = min((i + 1) * target_sequence_length, len(sequence.arrival_times))
+                    new_seq = sequence.extract_events_in_interval(start, end)
+                    new_sequences.append(new_seq)
+
+        return InMemoryDataset(sequences=new_sequences)
 
     @property
     def required_files(self):

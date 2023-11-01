@@ -187,8 +187,34 @@ class Sequence(DotDict):
         return Sequence(
             inter_times=new_inter_times,
             t_start=start,
-            t_nll_start=max(self.t_nll_start, start),
+            t_nll_start=start,
             **other_attr,
+        )
+    
+    #new method i added
+    def extract_events_in_interval(self, start: float, end: float) -> "Sequence":
+        """Create a new sequence with all events within the specified time interval."""
+        if start < self.t_start or end > self.num_events:
+            raise ValueError(
+                f"start_time must be >= {self.t_start} and end_time must be <= {self.t_end}"
+            )
+
+        new_arrival_times = self.arrival_times[start: end]
+        new_inter_times = self.inter_times[start: end]
+        # new_mags = self.mag[start: end]      
+        other_attr = {}
+        for key, value in self.items():
+            if key not in self.default_sequence_attrs:
+                if 'bounds' in key:
+                    other_attr[key] = value
+                else: 
+                    other_attr[key] = value[start: end].contiguous()  
+
+        return Sequence(
+            inter_times=new_inter_times,
+            arrival_times=new_arrival_times,
+            # mag=new_mags,
+            **other_attr
         )
 
     def state_dict(self) -> dict:
