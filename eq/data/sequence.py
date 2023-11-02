@@ -201,20 +201,22 @@ class Sequence(DotDict):
 
         new_arrival_times = self.arrival_times[start: end]
         new_inter_times = self.inter_times[start: end]
-        # new_mags = self.mag[start: end]      
-        other_attr = {}
-        for key, value in self.items():
-            if key not in self.default_sequence_attrs:
-                if 'bounds' in key:
-                    other_attr[key] = value
-                else: 
-                    other_attr[key] = value[start: end].contiguous()  
+        # new_extra_feat = self.extra_feat[start: end]
+        mag = self.mag[start: end]
+        mag = ContinuousMarks(mag, [4.5,10]) 
+        # new_mag_bounds = self.mag_bounds   
+        # other_attr = {}
+        # for key, value in self.items():
+        #     if key not in self.default_sequence_attrs:
+        #         if 'bounds' in key:
+        #             other_attr[key] = value
+        #         else: 
+        #             other_attr[key] = value[start: end].contiguous()  
 
         return Sequence(
             inter_times=new_inter_times,
-            arrival_times=new_arrival_times,
-            # mag=new_mags,
-            **other_attr
+            arrival_times = new_arrival_times,
+            mag = mag
         )
 
     def state_dict(self) -> dict:

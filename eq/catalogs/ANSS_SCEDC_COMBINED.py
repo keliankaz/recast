@@ -49,6 +49,8 @@ class CombinedCatalog(Catalog):
         for catalog in catalogs:
             name = str(catalog.metadata['name'])
             dict[name +'_test'] = catalog.test
+            dict[name +'_train'] = catalog.train
+            dict[name +'_val'] = catalog.val
         
         self.combined_info = dict
 

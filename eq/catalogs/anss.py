@@ -171,7 +171,7 @@ class ANSS_MultiCatalog(Catalog):
                     inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
                     t_start=t_start,
                     mag=mag,
-                    extra_feat = torch.as_tensor(depth, dtype=torch.float32)
+                    # extra_feat = torch.as_tensor(depth, dtype=torch.float32)
                 )
             )
         return InMemoryDataset(sequences=sequences)
