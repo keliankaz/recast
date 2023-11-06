@@ -1,0 +1,64 @@
+wandb_version: 1
+
+batch_size:
+  desc: null
+  value: 128
+betas:
+  desc: null
+  value:
+  - 0.9
+  - 0.999
+context_size:
+  desc: null
+  value: 128
+dropout_proba:
+  desc: null
+  value: 0.2
+lr:
+  desc: null
+  value: 0.001
+num_components:
+  desc: null
+  value: 64
+rnn_type:
+  desc: null
+  value: LSTM
+weight_decay:
+  desc: null
+  value: 0
+_wandb:
+  desc: null
+  value:
+    python_version: 3.11.5
+    cli_version: 0.15.12
+    framework: lightning
+    is_jupyter_run: true
+    is_kaggle_kernel: false
+    start_time: 1699257268.10498
+    t:
+      1:
+      - 1
+      - 5
+      - 9
+      - 41
+      - 53
+      - 55
+      - 103
+      2:
+      - 1
+      - 5
+      - 9
+      - 41
+      - 53
+      - 55
+      - 103
+      3:
+      - 2
+      - 23
+      - 37
+      4: 3.11.5
+      5: 0.15.12
+      8:
+      - 1
+      - 5
+      13: linux-x86_64
