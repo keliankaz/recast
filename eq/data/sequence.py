@@ -191,34 +191,6 @@ class Sequence(DotDict):
             **other_attr,
         )
     
-    #new method i added
-    def extract_events_in_interval(self, start: float, end: float) -> "Sequence":
-        """Create a new sequence with all events within the specified time interval."""
-        if start < self.t_start or end > self.num_events:
-            raise ValueError(
-                f"start_time must be >= {self.t_start} and end_time must be <= {self.t_end}"
-            )
-
-        new_arrival_times = self.arrival_times[start: end]
-        new_inter_times = self.inter_times[start: end]
-        # new_extra_feat = self.extra_feat[start: end]
-        mag = self.mag[start: end]
-        mag = ContinuousMarks(mag, [4.5,10]) 
-        # new_mag_bounds = self.mag_bounds   
-        # other_attr = {}
-        # for key, value in self.items():
-        #     if key not in self.default_sequence_attrs:
-        #         if 'bounds' in key:
-        #             other_attr[key] = value
-        #         else: 
-        #             other_attr[key] = value[start: end].contiguous()  
-
-        return Sequence(
-            inter_times=new_inter_times,
-            arrival_times = new_arrival_times,
-            mag = mag
-        )
-
     def state_dict(self) -> dict:
         # These attributes are computed from inter_times and t_start, no need to save them to disk
         inferred_attributes = ["arrival_times", "t_end"]
