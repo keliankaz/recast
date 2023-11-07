@@ -38,6 +38,7 @@ class SCEDC(Catalog):
         train_start_ts: pd.Timestamp = pd.Timestamp("1985-01-01"),
         val_start_ts: pd.Timestamp = pd.Timestamp("2005-01-01"),
         test_start_ts: pd.Timestamp = pd.Timestamp("2014-01-01"),
+        include_depth: bool = True
     ):
         metadata = {
             "name": f"SCEDC",
@@ -46,6 +47,7 @@ class SCEDC(Catalog):
             "mag_completeness": mag_completeness,
             "start_ts": pd.Timestamp("1981-01-01"),
             "end_ts": pd.Timestamp("2020-01-01"),
+            "include_depth": include_depth
         }
 
         super().__init__(root_dir=root_dir, metadata=metadata)
@@ -124,9 +126,17 @@ class SCEDC(Catalog):
         ).values
         inter_times = np.diff(arrival_times, prepend=[t_start], append=[t_end])
         mag = subset_df["magnitude"].values
-        seq = Sequence(
-            inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
-            mag=ContinuousMarks(mag,[self.metadata["mag_completeness"],10]),
-        )
+        depth = subset_df["depth"].values
+        if self.metadata['include_depth']==True:
+            seq = Sequence(
+                inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
+                mag=ContinuousMarks(mag,[self.metadata["mag_completeness"],10]),
+                extra_feat=torch.as_tensor(depth, dtype=torch.float32).unsqueeze(-1) #depth has shape N x 1
+            )
+        else:
+            seq = Sequence(
+                inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
+                mag=ContinuousMarks(mag,[self.metadata["mag_completeness"],10]),
+            )
         dataset = InMemoryDataset(sequences=[seq])
         dataset.save_to_disk(self.root_dir / "full_sequence.pt")

@@ -208,6 +208,7 @@ class RecurrentTPP(TPPModel):
             batch: Sequences generated from the model.
 
         """
+        raise NotImplementedError() # temporary hide this function
         if self.input_magnitude != self.predict_magnitude:
             raise ValueError(
                 "Sampling is impossible if input_magnitude != predict_magnitude"
