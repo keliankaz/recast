@@ -148,12 +148,13 @@ class ANSS_MultiCatalog(Catalog):
             inter_times = np.diff(arrival_times, prepend=[t_start], append=[t_end])
             mag = local_df.mag.values
             mag = ContinuousMarks(mag, [self.metadata["mag_completeness"], 10])
+            depth = local_df.depth.values
             if self.metadata['include_depth'] == True:    
                 sequences.append(Sequence(
                     inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
                     t_start=t_start,
                     mag=mag,
-                    extra_feat = torch.as_tensor(inter_times, dtype=torch.float32)
+                    extra_feat = torch.as_tensor(depth, dtype=torch.float32).unsqueeze(-1)
                     )) 
             else:
                 sequences.append(Sequence(
