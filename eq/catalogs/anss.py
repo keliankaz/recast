@@ -46,7 +46,7 @@ class ANSS_MultiCatalog(Catalog):
         mag_completeness: float = 5.0,
         minimum_mainshock_mag: float = 7.0,
         random_state: int = 123,
-        include_depth: bool = False
+        include_depth: bool = True
     ):
         metadata = {
             "name": "ANSS_MultiCatalog",
@@ -63,7 +63,7 @@ class ANSS_MultiCatalog(Catalog):
             "train_daterange": train_daterange,
             "val_daterange": val_daterange,
             "test_daterange": test_daterange,
-            "include_depth": include_depth
+            "include_depth": include_depth,
         }
 
         super().__init__(root_dir=root_dir, metadata=metadata)
@@ -148,11 +148,19 @@ class ANSS_MultiCatalog(Catalog):
             inter_times = np.diff(arrival_times, prepend=[t_start], append=[t_end])
             mag = local_df.mag.values
             mag = ContinuousMarks(mag, [self.metadata["mag_completeness"], 10])
-            Sequence(
+            if self.metadata['include_depth'] == True:    
+                sequences.append(Sequence(
                     inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
                     t_start=t_start,
                     mag=mag,
-                    ) 
+                    extra_feat = torch.as_tensor(inter_times, dtype=torch.float32)
+                    )) 
+            else:
+                sequences.append(Sequence(
+                    inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
+                    t_start=t_start,
+                    mag=mag,
+                    )) 
             
         return InMemoryDataset(sequences=sequences)
 

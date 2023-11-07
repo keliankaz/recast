@@ -37,13 +37,10 @@ class CombinedCatalog(Catalog):
             for test in catalog.test:
                 combined_test_sequences.append(test)
 
-        # min_sequence_length_train = min(len(sequence.arrival_times) for sequence in combined_train_sequences)
-        # min_sequence_length_val = min(len(sequence.arrival_times) for sequence in combined_val_sequences)
-        # min_sequence_length_test = min(len(sequence.arrival_times) for sequence in combined_test_sequences)
 
-        combined_train_data = self.even_sequences(combined_train_sequences, 200)
-        combined_val_data = self.even_sequences(combined_val_sequences, 200)
-        combined_test_data = self.even_sequences(combined_test_sequences, 200)
+        combined_train_data = self.even_sequences(combined_train_sequences, 500)
+        combined_val_data = self.even_sequences(combined_val_sequences, 500)
+        combined_test_data = self.even_sequences(combined_test_sequences, 500)
 
         dict = {}
         dict['combined_train'] = InMemoryDataset(sequences=combined_train_data)
