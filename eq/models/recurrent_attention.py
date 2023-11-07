@@ -59,7 +59,6 @@ class RecurrentTPP_Attention(RecurrentTPP):
         # num_heads = 4
         assert context_size % 4 == 0, f"context size={context_size} should be divisible by num_heads={4}"
         self.multihead_attn = nn.MultiheadAttention(embed_dim=context_size, num_heads=4, batch_first=True) # unsure about embed_dim
-        self.layer_norm = nn.LayerNorm()
 
     def get_context(self, batch):
         """Get context embedding for each event in the batch of padded sequences.
@@ -76,9 +75,6 @@ class RecurrentTPP_Attention(RecurrentTPP):
 
         # rnn_output = self.rnn(features)[0][:, :-1, :]
         rnn_output = self.rnn(features)[0] # check size
-        print(rnn_output.shape)
-        print(self.context_size, batch.shape)
-        raise Exception
         attention_output = self.multihead_attn(rnn_output, rnn_output, rnn_output)[0] #TODO should be (B, L, C), testing/reading about is_causal
         # see https://stats.stackexchange.com/questions/421935/what-exactly-are-keys-queries-and-values-in-attention-mechanisms#:~:text=The%20short%20answer%20is%20that,K%2C%20V%20are%20first%20introduced.
         # for a discussion of where to get Q, K, V values. It is possible that we should fetch V differently!
