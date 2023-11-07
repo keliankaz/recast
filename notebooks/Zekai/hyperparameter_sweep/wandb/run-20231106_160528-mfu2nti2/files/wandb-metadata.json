@@ -1,0 +1,167 @@
+{
+    "os": "Linux-6.2.0-36-generic-x86_64-with-glibc2.35",
+    "python": "3.11.5",
+    "heartbeatAt": "2023-11-07T00:05:28.848179",
+    "startedAt": "2023-11-07T00:05:28.450418",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "sweep_updated.ipynb",
+    "codePathLocal": "sweep_updated.ipynb",
+    "git": {
+        "remote": "https://github.com/keliankaz/recast.git",
+        "commit": "26976916268caca76d243d2a6cfcf80bfc1ffd72"
+    },
+    "email": "zekai.wang@berkeley.edu",
+    "root": "/home/zekai/repos/recast",
+    "host": "zekai-MS-7E07",
+    "username": "zekai",
+    "executable": "/home/zekai/miniconda3/envs/eq/bin/python",
+    "cpu_count": 16,
+    "cpu_count_logical": 24,
+    "cpu_freq": {
+        "current": 4.391958333333334,
+        "min": 800.0,
+        "max": 4950.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 5.3,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.4,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5.3,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.4,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.4,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5.3,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5.3,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.4,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5.3,
+            "min": 800.0,
+            "max": 5400.0
+        },
+        {
+            "current": 5.302,
+            "min": 800.0,
+            "max": 5400.0
+        },
+        {
+            "current": 5.3,
+            "min": 800.0,
+            "max": 5400.0
+        },
+        {
+            "current": 3.4,
+            "min": 800.0,
+            "max": 5400.0
+        },
+        {
+            "current": 5.194,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5.3,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 5.3,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 3.4,
+            "min": 800.0,
+            "max": 5300.0
+        },
+        {
+            "current": 4.2,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 4.197,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 4.175,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 4.2,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 4.199,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 4.235,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 4.199,
+            "min": 800.0,
+            "max": 4200.0
+        },
+        {
+            "current": 4.2,
+            "min": 800.0,
+            "max": 4200.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 1832.2072448730469,
+            "used": 127.94070434570312
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4090",
+            "memory_total": 25757220864
+        }
+    ],
+    "memory": {
+        "total": 62.559898376464844
+    }
+}

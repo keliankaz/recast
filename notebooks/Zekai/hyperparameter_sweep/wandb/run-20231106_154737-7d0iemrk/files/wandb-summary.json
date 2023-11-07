@@ -1,0 +1,1 @@
+{"avg_train_loss": -0.24591763396012156, "avg_val_loss": -2.1623331205174328, "epoch": 199, "_timestamp": 1699314537.701241, "_runtime": 80.32596397399902, "_step": 200, "avg_test_loss": 0.1569469194021076, "_wandb": {"runtime": 80}}
