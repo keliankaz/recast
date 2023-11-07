@@ -38,9 +38,9 @@ class CombinedCatalog(Catalog):
                 combined_test_sequences.append(test)
 
 
-        combined_train_data = self.even_sequences(combined_train_sequences, 1000)
-        combined_val_data = self.even_sequences(combined_val_sequences, 1000)
-        combined_test_data = self.even_sequences(combined_test_sequences, 1000)
+        combined_train_data = self.even_sequences(combined_train_sequences, 1000, len(combined_train_sequences) // 4)
+        combined_val_data = self.even_sequences(combined_val_sequences, 1000, len(combined_val_sequences) // 4)
+        combined_test_data = self.even_sequences(combined_test_sequences, 1000, len(combined_test_sequences) // 4)
 
         dict = {}
         dict['combined_train'] = InMemoryDataset(sequences=combined_train_data)
@@ -55,26 +55,17 @@ class CombinedCatalog(Catalog):
         self.combined_info = dict
 
 
-    def even_sequences(self, sequences, target_sequence_length):
+    def even_sequences(self, sequences, target_sequence_length, amount_of):
         new_sequences = []
-        for sequence in sequences:
-            if len(sequence.arrival_times) > target_sequence_length:
-                num_segments = (len(sequence.arrival_times) + target_sequence_length - 1) // target_sequence_length
-                for i in range(num_segments):
-                    start = sequence.arrival_times[i * target_sequence_length]
-                    end = sequence.arrival_times[min((i + 1) * target_sequence_length, len(sequence.arrival_times) - 1)]
-                    new_seq = sequence.get_subsequence(start, end)
-                    new_sequences.append(new_seq)
-
-                    # Debugging: Print information to track data changes
-                    print(f"Length of new sequence: {len(new_seq.arrival_times)}")
-                    print(f"New sequence content: {new_seq.arrival_times}")
-                    
-                    if len(new_seq.arrival_times) > 0:  # Check for non-empty sequences
+        while len(new_sequences) <= amount_of:
+            for sequence in sequences:
+                if len(sequence.arrival_times) > target_sequence_length:
+                    num_segments = (len(sequence.arrival_times) + target_sequence_length - 1) // target_sequence_length
+                    for i in range(num_segments):
+                        start = sequence.arrival_times[i * target_sequence_length]
+                        end = sequence.arrival_times[min((i + 1) * target_sequence_length, len(sequence.arrival_times) - 1)]
+                        new_seq = sequence.get_subsequence(start, end)
                         new_sequences.append(new_seq)
-                    else:
-                        print("Warning: Empty sequence found.")
-                        # Handle empty sequence if necessary
 
         return InMemoryDataset(sequences=new_sequences)
 
