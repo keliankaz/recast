@@ -124,9 +124,11 @@ class SCEDC(Catalog):
         ).values
         inter_times = np.diff(arrival_times, prepend=[t_start], append=[t_end])
         mag = subset_df["magnitude"].values
+        depth = subset_df["depth"].values
         seq = Sequence(
             inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
             mag=ContinuousMarks(mag,[self.metadata["mag_completeness"],10]),
-        )
+        #     extra_feat=torch.as_tensor(depth, dtype=torch.float32).unsqueeze(-1) # depth has shape N x 1
+         )
         dataset = InMemoryDataset(sequences=[seq])
         dataset.save_to_disk(self.root_dir / "full_sequence.pt")

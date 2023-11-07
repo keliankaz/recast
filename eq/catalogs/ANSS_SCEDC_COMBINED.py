@@ -24,15 +24,18 @@ class CombinedCatalog(Catalog):
 
         combined_train_sequences = []
         for catalog in catalogs:
-            combined_train_sequences.extend(catalog.train)
+            for train in catalog.train:
+                combined_train_sequences.append(train)
 
         combined_val_sequences = []
         for catalog in catalogs:
-            combined_val_sequences.extend(catalog.val)
+            for val in catalog.val:
+                combined_val_sequences.append(val)
         
         combined_test_sequences = []
         for catalog in catalogs:
-            combined_test_sequences.extend(catalog.test)
+            for test in catalog.test:
+                combined_test_sequences.append(test)
 
         # min_sequence_length_train = min(len(sequence.arrival_times) for sequence in combined_train_sequences)
         # min_sequence_length_val = min(len(sequence.arrival_times) for sequence in combined_val_sequences)
@@ -43,9 +46,9 @@ class CombinedCatalog(Catalog):
         combined_test_data = self.even_sequences(combined_test_sequences, 200)
 
         dict = {}
-        dict['combined_train'] = combined_train_data
-        dict['combined_val'] = combined_val_data
-        dict['combined_test'] = combined_test_data
+        dict['combined_train'] = InMemoryDataset(sequences=combined_train_data)
+        dict['combined_val'] = InMemoryDataset(sequences=combined_val_data)
+        dict['combined_test'] = InMemoryDataset(sequences=combined_test_data)
         for catalog in catalogs:
             name = str(catalog.metadata['name'])
             dict[name +'_test'] = catalog.test
@@ -61,10 +64,20 @@ class CombinedCatalog(Catalog):
             if len(sequence.arrival_times) > target_sequence_length:
                 num_segments = (len(sequence.arrival_times) + target_sequence_length - 1) // target_sequence_length
                 for i in range(num_segments):
-                    start = i * target_sequence_length
-                    end = min((i + 1) * target_sequence_length, len(sequence.arrival_times))
-                    new_seq = sequence.extract_events_in_interval(start, end)
+                    start = sequence.arrival_times[i * target_sequence_length]
+                    end = sequence.arrival_times[min((i + 1) * target_sequence_length, len(sequence.arrival_times) - 1)]
+                    new_seq = sequence.get_subsequence(start, end)
                     new_sequences.append(new_seq)
+
+                    # Debugging: Print information to track data changes
+                    print(f"Length of new sequence: {len(new_seq.arrival_times)}")
+                    print(f"New sequence content: {new_seq.arrival_times}")
+                    
+                    if len(new_seq.arrival_times) > 0:  # Check for non-empty sequences
+                        new_sequences.append(new_seq)
+                    else:
+                        print("Warning: Empty sequence found.")
+                        # Handle empty sequence if necessary
 
         return InMemoryDataset(sequences=new_sequences)
 
