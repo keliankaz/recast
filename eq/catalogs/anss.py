@@ -148,7 +148,7 @@ class ANSS_MultiCatalog(Catalog):
             inter_times = np.diff(arrival_times, prepend=[t_start], append=[t_end])
             mag = local_df.mag.values
             mag = ContinuousMarks(mag, [self.metadata["mag_completeness"], 10])
-            depth = local_df.depth.values
+            depth = (local_df.depth.values - np.mean(local_df.depth.values)) / np.std(local_df.depth.values)
             if self.metadata['include_depth'] == True:    
                 sequences.append(Sequence(
                     inter_times=torch.as_tensor(inter_times, dtype=torch.float32),

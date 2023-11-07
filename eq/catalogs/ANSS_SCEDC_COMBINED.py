@@ -38,9 +38,9 @@ class CombinedCatalog(Catalog):
                 combined_test_sequences.append(test)
 
 
-        combined_train_data = self.even_sequences(combined_train_sequences, 500)
-        combined_val_data = self.even_sequences(combined_val_sequences, 500)
-        combined_test_data = self.even_sequences(combined_test_sequences, 500)
+        combined_train_data = self.even_sequences(combined_train_sequences, 1000)
+        combined_val_data = self.even_sequences(combined_val_sequences, 1000)
+        combined_test_data = self.even_sequences(combined_test_sequences, 1000)
 
         dict = {}
         dict['combined_train'] = InMemoryDataset(sequences=combined_train_data)
