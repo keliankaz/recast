@@ -1,6 +1,8 @@
 # %%
 from pathlib import Path
 from typing import Union
+import os
+import warnings
 
 from eq.data import Catalog, InMemoryDataset, Sequence, ContinuousMarks, default_catalogs_dir
 import pandas as pd
@@ -76,18 +78,16 @@ class ANSS_MultiCatalog(Catalog):
 
     def get_catalog_batch(
         self,
+        whole_global_df,
         batch_size: int = None,
         global_start_time: pd.Timestamp = None,
         global_end_time: pd.Timestamp = None,
-        client=Client("IRIS"),
     ) -> InMemoryDataset:
-        global_obspy_catalog = client.get_events(
-            starttime=UTCDateTime(global_start_time),
-            endtime=UTCDateTime(global_end_time),
-            magnitudetype="MW",
-            minmagnitude=self.metadata["mag_completeness"],
-        )
-        global_df = self.obspy2pd(global_obspy_catalog)
+        
+        global_df = whole_global_df.loc[
+            (whole_global_df.time > global_start_time) & 
+            (whole_global_df.time < global_end_time)
+        ]
 
         major_earthquakes_df = global_df.loc[
             global_df.mag > self.metadata["minimum_mainshock_mag"]
@@ -170,13 +170,67 @@ class ANSS_MultiCatalog(Catalog):
         Returns:
             None
         """
-        print("Downloading...")
+
+        dates = np.concatenate(
+            [
+                self.metadata["train_daterange"], 
+                self.metadata["val_daterange"],
+                self.metadata["test_daterange"],
+            ]
+        )
+        start_date = min(dates)
+        end_date = max(dates)
+        
+        raw_dir = str(self.root_dir) + '_raw'
+        filename = raw_dir + '/anss.csv'
+        
+        querry = dict(
+            starttime=UTCDateTime(start_date),
+            endtime=UTCDateTime(end_date),
+            magnitudetype="MW",
+            minmagnitude=self.metadata["mag_completeness"],
+        )
+        
+        if not (
+            os.path.exists(filename)
+            and np.load(
+                os.path.splitext(filename)[0] + "_metadata.npy", allow_pickle=True
+            ).item() == querry
+        ):
+            print("Downloading...")
+            
+            os.mkdir(raw_dir)
+            
+            # Use obspy api to ge  events from the IRIS earthquake client
+            client=Client("IRIS")
+            cat = client.get_events(**querry)
+
+            # Write the earthquakes to a file
+            f = open(filename, "w")
+            f.write("time,lat,lon,depth,mag\n")
+            for event in cat:
+                loc = event.preferred_origin()
+                lat = loc.latitude
+                lon = loc.longitude
+                dep = loc.depth
+                time = loc.time.matplotlib_date
+                mag = event.preferred_magnitude().mag
+                f.write("{},{},{},{},{}\n".format(time, lat, lon, dep, mag))
+            f.close()
+
+            # Save querry to metadatafile
+            np.save(os.path.splitext(filename)[0] + "_metadata.npy", querry) 
+        else:
+            print(f"Using existing catalog: {filename}")
+        
+        catalog_df = pd.read_csv(filename, na_values="None")
+        catalog_df["time"] = pd.to_datetime(catalog_df["time"], unit='d')
 
         set_names = ["train", "val", "test"]
         for i_set in set_names:
             print(i_set)
             n = int(self.metadata["num_sequences"] * self.metadata[f"{i_set}_frac"])
-            dataset = self.get_catalog_batch(n, *self.metadata[f"{i_set}_daterange"])
+            dataset = self.get_catalog_batch(catalog_df, n, *self.metadata[f"{i_set}_daterange"])
             dataset.save_to_disk((self.root_dir / f"{i_set}.pt"))
         print("Success!")
 
@@ -214,3 +268,5 @@ class ANSS_MultiCatalog(Catalog):
 # %%
 if __name__ == "__main__":
     catalog = ANSS_MultiCatalog()
+
+# %%
