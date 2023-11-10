@@ -187,10 +187,10 @@ class Sequence(DotDict):
         return Sequence(
             inter_times=new_inter_times,
             t_start=start,
-            t_nll_start=max(self.t_nll_start, start),
+            t_nll_start=start,
             **other_attr,
         )
-
+    
     def state_dict(self) -> dict:
         # These attributes are computed from inter_times and t_start, no need to save them to disk
         inferred_attributes = ["arrival_times", "t_end"]

@@ -20,7 +20,7 @@ class RecurrentTPP(TPPModel):
         num_extra_features: Number of extra features to use as input.
         context_size: Size of the RNN hidden state.
         num_components: Number of mixture components in the output distribution.
-        rnn_type: Type of the RNN. Possible choices {'GRU', 'RNN'}
+        rnn_type: Type of the RNN. Possible choices {'GRU', 'RNN', 'LSTM'}
         dropout_proba: Dropout probability.
         tau_mean: Mean inter-event times in the dataset.
         mag_mean: Mean earthquake magnitude in the dataset.                             # FLAG
@@ -63,9 +63,9 @@ class RecurrentTPP(TPPModel):
             self.num_mag_params = 1  # (1 rate)
             self.hypernet_mag = nn.Linear(context_size, self.num_mag_params)
 
-        if rnn_type not in ["RNN", "GRU"]:
+        if rnn_type not in ["RNN", "GRU", "LSTM"]:
             raise ValueError(
-                f"rnn_type must be one of ['RNN', 'GRU'] " f"(got {rnn_type})"
+                f"rnn_type must be one of ['RNN', 'GRU', 'LSTM'] " f"(got {rnn_type})"
             )
         self.num_rnn_inputs = (
             1 + int(self.input_magnitude) + (
@@ -89,7 +89,7 @@ class RecurrentTPP(TPPModel):
 
     def encode_magnitude(self, mag, mag_completeness: Union[float,torch.tensor]):
         # mag has shape (...)
-        # mag_co,pleteness 
+        # mag_completeness 
         # output has shape (..., 1)
         if type(mag) is float:
             out = mag.unsqueeze(-1) - mag_completeness
@@ -208,6 +208,7 @@ class RecurrentTPP(TPPModel):
             batch: Sequences generated from the model.
 
         """
+        raise NotImplementedError() # temporary hide this function
         if self.input_magnitude != self.predict_magnitude:
             raise ValueError(
                 "Sampling is impossible if input_magnitude != predict_magnitude"
