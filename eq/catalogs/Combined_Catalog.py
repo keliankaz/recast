@@ -17,6 +17,9 @@ class CombinedCatalog(Catalog):
         if sum(sub_sampling_prop_list) != 1:
             raise ValueError("The sum of sub_sampling_prop_list must be equal to 1")
 
+        if len(catalogs) != len(sub_sampling_prop_list):
+            raise ValueError("The lengths of sub_sampling_prop and catalogs list must be equal")
+
         
         # Initialize with metadata for the combined catalog
         metadata = {
