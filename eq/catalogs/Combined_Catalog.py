@@ -48,6 +48,7 @@ class CombinedCatalog(Catalog):
 
         #proportionalize
         combined_train_data, combined_val_data, combined_test_data = self.proportionalize(catalogs, self.metadata['prop_list'])
+    
 
         #make into final train, val, test lists
         train = self.sequence_list(combined_train_data)
@@ -94,7 +95,9 @@ class CombinedCatalog(Catalog):
 
         for i in np.arange(0,len(prop_list)):
             new_catalog_train_length = np.round(prop_list[i] * total_train_length)
+            print(new_catalog_train_length)
             new_catalog_train = catalogs[i].train[0: int(min(len(catalogs[i].train), new_catalog_train_length))]
+            print(len(new_catalog_train))
             final_train.append(new_catalog_train)
 
             new_catalog_val_length = np.round(prop_list[i] * total_val_length)

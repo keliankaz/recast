@@ -102,6 +102,7 @@ class TPPModel(pl.LightningModule):
                 self.log(
                     f"{prefix}_{k}",
                     v.mean(),
+                    # prog_bar=True,
                     on_step=False,
                     on_epoch=True,
                     batch_size=batch.batch_size,
@@ -115,6 +116,7 @@ class TPPModel(pl.LightningModule):
             self.log(
                 f"{prefix}_loss",
                 total_loss,
+                # prog_bar=True,
                 on_step=False,
                 on_epoch=True,
                 batch_size=batch.batch_size,
@@ -123,6 +125,7 @@ class TPPModel(pl.LightningModule):
         self.log(
             f"total_{prefix}_loss",
             torch.Tensor([total_loss]),
+            prog_bar=True,
             on_step=False,
             on_epoch=True,
             batch_size=batch.batch_size,
