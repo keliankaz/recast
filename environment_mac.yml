@@ -1,0 +1,27 @@
+name: DS_DISCOVERY  
+channels:
+  - pytorch
+  - defaults
+  - conda-forge
+dependencies:  
+  - python
+  - ipywidgets
+  - joblib
+  - jupyter
+  - matplotlib
+  - numpy
+  - pandas
+  - pytorch
+  - scipy
+  - seaborn
+  - requests
+  - tqdm
+  - urllib3
+  - scikit-learn
+  - obspy
+  - pip
+  - pip:
+    - pytorch-lightning
+    - setuptools
+    - sacred
+    - wandb

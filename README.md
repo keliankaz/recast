@@ -1,13 +1,20 @@
 # Flexible and Scalable Earthquake Forecasting
 This repository includes the reference material for *Using deep-learning for flexible and scalable earthquake forecasting* by Kelian Dascher-Cousineau, Oleksandr Shchur, Emily Brodsky, and Stephan Günnemann. Neural Temporal Point Process (NTPP) models provide an alternative approach to earthquake forecasting. Here, we present an implementation of an NTPP, the Recurrent Earthquake foreCAST (RECAST).
 
+This repository has been updated to include the work by the DS-Discovery group at UC Berkeley.
+
 The code includes:
 
 1. Model definitions for both ETAS and the NTPP implementation: RECAST in the `eq` Python library 
 2. Scripts for model training in the featured experiments in `experiments/`
-3. Tutorials explaining how the code works: `notebooks/1. Training the model.ipynb`, `notebooks/2. Forecasting.ipynb`, and  `notebooks/3. (Experimental) training with extra features.ipynb`
-3. Jupyter Notebooks to reproduce figures 2-4 in `notebooks/generate_figures/`
-4. The trained models in `trained_models/`
+3. Tutorials explaining how the code works: 
+    - [`notebooks/1. Training the model.ipynb`](notebooks/1.%20Training%20the%20model.ipynb), 
+    - [`notebooks/2. Forecasting.ipynb`](notebooks/2.%20Forecasting.ipynb), 
+    - [`notebooks/3. (Experimental) training with extra features.ipynb`](notebooks/3.%20(Experimental)%20training%20with%20extra%20features.ipynb), 
+    - [`notebooks/4. Training the model global.ipynb`](notebooks/4.%20Training%20the%20model%20global.ipynb), and 
+    - [`notebooks/5. Monitor global training.ipynb`](notebooks/5.%20Monitor%20global%20training.ipynb)
+4. Jupyter Notebooks to reproduce figures 2-4 in `notebooks/generate_figures/`
+5. The trained models in `trained_models/`
 
 ## Reproducing the results
 To reproduce the experimental results from the paper, please see the file `REPRODUCE.md`.   
@@ -26,11 +33,15 @@ The code has been tested on Linux (Ubuntu 20.04) and MacOS.
       - cudatoolkit=11.3
     ```
     from the file `environment.yml` before executing the commands above.
+
+The exact environment file can cause issues on MacOS. If you are using MacOS, use the file `environment_mac.yml` instead. Note that using mps is not supported for training the model and that some issues may arise using newer versions of the dependencies.
+  
 3. Install the `eq` package.
     ```bash
     pip install -e .
     ```
 
+A common issue is that the eq is install in the wrong directory. If you encounter this issue, you can try to uninstall the eq package and install it again.
 
 ## Examples
 ### Training the model
@@ -97,8 +108,8 @@ The code includes the following earthquake catalogs for Southern California that
 | [`eq.catalogs.SCEDC`](https://service.scedc.caltech.edu/ftp/catalogs/SCEC_DC/)                       | 1981-01       | 2020-01     | 125421   | 2.0                      |
 | [`eq.catalogs.QTMSaltonSea`](https://service.scedc.caltech.edu/ftp/QTMcatalog/qtm_final_12dev.hypo)  | 2008-01       | 2018-01     | 44133    | 1.0                      |
 | [`eq.catalogs.QTMSanJacinto`](https://service.scedc.caltech.edu/ftp/QTMcatalog/qtm_final_12dev.hypo) | 2008-01       | 2018-01     | 20790    | 1.0                      |
+| [`eq.catalogs.ANSS_MultiCatalog`](https://earthquake.usgs.gov/data/comcat/)                          | 1990-01       | 2020-01     | N.A.     | 4.5                      |
 
 In addition, the following synthetic catalogs were used in the experiments
 - `eq.catalogs.ETAS_SingleCatalog`: One long catalog produced by the ETAS model.
 - `eq.catalogs.ETAS_MultiCatalog`: Multiple short catalogs produced by the ETAS model.
-i am here
