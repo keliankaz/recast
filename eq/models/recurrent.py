@@ -158,7 +158,7 @@ class RecurrentTPP(TPPModel):
         context = self.get_context(batch)  # (B, L, C)
         # Inter-event times
         inter_time_dist = self.get_inter_time_dist(context)
-        log_pdf = inter_time_dist.log_prob(batch.inter_times.clamp_min(1e-10))  # (B, L)
+        log_pdf = inter_time_dist.log_prob(batch.inter_times.clamp_min(1e-10))  # (B, L) # KDC: is this clamping twice?
         log_like = (log_pdf * batch.mask).sum(-1)
 
         # Survival time from last event until t_end
@@ -265,6 +265,8 @@ class RecurrentTPP(TPPModel):
         inter_times = torch.masked_fill(inter_times, padding_mask, 0.0)
         end_idx = (1 - padding_mask.long()).sum(-1)
         last_surv_time = duration - inter_times.sum(-1)
+        
+        # TODO: handle empty samples
         inter_times[torch.arange(batch_size), end_idx] = last_surv_time
         batch = eq.data.Batch(
             inter_times=inter_times,
@@ -307,6 +309,11 @@ class RecurrentTPP(TPPModel):
         batch = eq.data.Batch.from_list([sequence])
         context = self.get_context(batch).squeeze(0)  # (L, C)
         inter_time_dist = self.get_inter_time_dist(context)
+        
+        # Note that on each interval the compensator can be computed as:
+        # compensator = -log_surv(x)
+        # or
+        # compensator = int(hazard(x)) dx
 
         # Evaluate each log survival function at times x = [eps, ..., tau_i]
         x = batch.inter_times * torch.linspace(1e-4, 1, num_grid_points)[:, None]
