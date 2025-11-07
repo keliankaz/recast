@@ -87,10 +87,15 @@ class Batch(DotDict):
         other_attr = {}
         for name in other_attr_names:
             values = [seq[name] for seq in sequences]
-            # Tensors are padded into shape (batch_size, padded_seq_len, ...)
-            other_attr[name] = pad_sequence(
-                values, padding_value=0, max_len=padded_seq_len
-            )
+
+            if "_bounds" in name:
+                # Bounds are stacked into shape (batch_size, 2)
+                other_attr[name] = torch.stack(values, dim=0)
+            else:
+                # Tensors are padded into shape (batch_size, padded_seq_len, ...)
+                other_attr[name] = pad_sequence(
+                    values, padding_value=0, max_len=padded_seq_len
+                )
 
         return Batch(
             inter_times=inter_times,

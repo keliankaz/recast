@@ -14,6 +14,8 @@ class ContinuousMarks:
     that exist within a bounds. In many cases, it is useful to evaluate the negative log-likelihood (NLL) on a
     subset of the bounds.
 
+    Note that ContinuousMarks does not actually check whether values are within bounds.
+
     Examples:
         - Magnitude: The bounds is [Mc,Mmax] but the NLL may be evaluated on the interval [Mmin, Mmax].
         - Location: The bounds delimited by a convex hull specified by set of knots. The NLL may be evaluated in a subregion.
@@ -30,6 +32,13 @@ class ContinuousMarks:
 
     Example:
         >>> marks = ContinuousMarks([4.0, 2.1, 2.5, 2.9], bounds=[2.0, 5.0], nll_bounds=[2.5, 5.0])
+        >>> marks.nll_bounds
+        tensor([2.5000, 5.0000])
+
+        # Simply input the mark into a sequence instead of the values alone
+        >>> seq = Sequence(inter_times=[1.0, 2.0, 3.0], t_start=0.0, mag=marks)
+        >>> seq.mag_nll_bounds
+        tensor([2.5000, 5.0000])
 
     """
 
@@ -44,6 +53,8 @@ class ContinuousMarks:
 
         if nll_bounds is None:
             self.nll_bounds = bounds
+        else:
+            self.nll_bounds = nll_bounds
 
         self._validate_args()
 
@@ -117,11 +128,12 @@ class Sequence(DotDict):
         self.t_nll_start = float(t_nll_start)
 
         for key, value in kwargs.items():
-            if type(value) is ContinuousMarks:
+            if isinstance(value, ContinuousMarks):
                 self[key] = torch.as_tensor(value.values)
                 self[key + "_bounds"] = torch.as_tensor(value.bounds)
-
-            self[key] = torch.as_tensor(value)
+                self[key + "_nll_bounds"] = torch.as_tensor(value.nll_bounds)
+            else:
+                self[key] = torch.as_tensor(value)
 
         self._validate_args()
         # Move all tensors to the same device as inter_times
@@ -211,7 +223,9 @@ class Sequence(DotDict):
             )
 
         for key, value in self.items():
-            if key not in self.default_sequence_attrs and value.shape[0] != len(self):
+            if (
+                key not in self.default_sequence_attrs and value.shape[0] != len(self)
+            ) and ("_bounds" not in key and value.shape[1] != 2):
                 raise ValueError(
                     f"Attribute {key} must have shape [{len(self)}, ...] (got {list(value.shape)})"
                 )

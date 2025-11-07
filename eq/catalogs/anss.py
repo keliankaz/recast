@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Union
 
-from eq.data import Catalog, InMemoryDataset, Sequence, default_catalogs_dir
+from eq.data import Catalog, InMemoryDataset, Sequence, default_catalogs_dir, ContinuousMarks
 import pandas as pd
 from obspy.clients.fdsn import Client
 from obspy import UTCDateTime
@@ -145,12 +145,19 @@ class ANSS_MultiCatalog(Catalog):
             ).values
             inter_times = np.diff(arrival_times, prepend=[t_start], append=[t_end])
             mag = local_df.mag.values
+            
+            mag_bounds = torch.as_tensor([self.metadata["mag_completeness"], 10.0], dtype=torch.float32)
+            
+            mag_marks = ContinuousMarks(
+                values=torch.as_tensor(mag, dtype=torch.float32),
+                bounds=mag_bounds,
+            )
 
             sequences.append(
                 Sequence(
                     inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
                     t_start=t_start,
-                    mag=torch.as_tensor(mag, dtype=torch.float32),
+                    mag=mag_marks,
                 )
             )
 
@@ -170,8 +177,6 @@ class ANSS_MultiCatalog(Catalog):
             None
         """
         print("Downloading...")
-
-        client = Client("IRIS")
 
         set_names = ["train", "val", "test"]
         for i_set in set_names:
