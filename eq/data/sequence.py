@@ -150,7 +150,7 @@ class Sequence(DotDict):
 
     def __len__(self):
         return self.num_events
-
+    
     @staticmethod
     def compute_inter_times(
         arrival_times: Union[np.ndarray, list, torch.Tensor],
@@ -187,15 +187,10 @@ class Sequence(DotDict):
         # Deal with other sequence attributes
         other_attr = {}
         for key, value in self.items():
-            if key not in self.default_sequence_attrs:
+            if "_bounds" not in key and key not in self.default_sequence_attrs:
                 other_attr[key] = value[mask].contiguous()
 
-        return Sequence(
-            inter_times=new_inter_times,
-            t_start=start,
-            t_nll_start=max(self.t_nll_start, start),
-            **other_attr,
-        )
+        return Sequence(inter_times=new_inter_times, t_start=start, t_nll_start=max(self.t_nll_start, start), **other_attr)
 
     def state_dict(self) -> dict:
         # These attributes are computed from inter_times and t_start, no need to save them to disk

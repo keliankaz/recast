@@ -265,8 +265,6 @@ class RecurrentTPP(TPPModel):
         inter_times = torch.masked_fill(inter_times, padding_mask, 0.0)
         end_idx = (1 - padding_mask.long()).sum(-1)
         last_surv_time = duration - inter_times.sum(-1)
-        
-        # TODO: handle empty samples
         inter_times[torch.arange(batch_size), end_idx] = last_surv_time
         batch = eq.data.Batch(
             inter_times=inter_times,
@@ -328,3 +326,5 @@ class RecurrentTPP(TPPModel):
         offsets = torch.cat([torch.tensor([0.0]), sequence.arrival_times])
         grid = (x + offsets).T.reshape(-1)
         return grid, compensator
+
+        
