@@ -1,20 +1,25 @@
-# %%
 from pathlib import Path
 from typing import Union
 
-from eq.data import Catalog, InMemoryDataset, Sequence, default_catalogs_dir, ContinuousMarks
+from eq.data import (
+    Catalog,
+    InMemoryDataset,
+    Sequence,
+    default_catalogs_dir,
+    ContinuousMarks,
+)
 import pandas as pd
 from obspy.clients.fdsn import Client
 from obspy import UTCDateTime
+from obspy.core.event import Catalog as ObsPyCatalog
 import datetime
 import numpy as np
 from tqdm import tqdm
-
 from sklearn.neighbors import BallTree
 
 import torch
 
-# %%
+
 EARTH_RADIUS_KM = 6378.1
 
 
@@ -76,48 +81,69 @@ class ANSS_MultiCatalog(Catalog):
 
     def get_catalog_batch(
         self,
-        batch_size: int = None,
+        batch_size: int = 1,
+        global_df: pd.DataFrame = None,
+        global_mainshock_df: pd.DataFrame = None,
+        tree: BallTree = None,
+        start_time: pd.Timestamp = None,
+        end_time: pd.Timestamp = None,
         global_start_time: pd.Timestamp = None,
-        global_end_time: pd.Timestamp = None,
-        client=Client("IRIS"),
     ) -> InMemoryDataset:
-        global_obspy_catalog = client.get_events(
-            starttime=UTCDateTime(global_start_time),
-            endtime=UTCDateTime(global_end_time),
-            magnitudetype="MW",
-            minmagnitude=self.metadata["mag_completeness"],
-        )
-        global_df = self.obspy2pd(global_obspy_catalog)
+        """Builds a batch of earthquake sequences from the provided global
+        catalog of earthqukes.
 
-        major_earthquakes_df = global_df.loc[
-            global_df.mag > self.metadata["minimum_mainshock_mag"]
+        Each sequence is a space-time window around a major earthquake
+        (M greater than self.metadata["minimum_mainshock_mag"]) in the global catalog. The catalog spans from the global start time to an randomly selected end time. The window selected for training (t_nll_start to t_end) is selected so as to remain withing the specified time range (start_time to end_time) and randomly shifted around the mainshock.
+
+        """
+
+        assert global_start_time <= start_time
+        assert (end_time - start_time) / pd.Timedelta(days=1) >= self.metadata[
+            "t_end"
+        ] * 2, "The time range is too short to generate the sequences with duration self.metadata['t_end'], allowing for a random time shift"
+
+        global_mainshock_df = global_mainshock_df.loc[
+            (
+                global_mainshock_df.time
+                <= end_time - pd.Timedelta(days=self.metadata["t_end"])
+            )
+            & (
+                global_mainshock_df.time
+                >= start_time + pd.Timedelta(days=self.metadata["t_end"])
+            )
         ]
-
-        tree = BallTree(
-            np.deg2rad(global_df[["lat", "lon"]].values), metric="haversine"
-        )
 
         sequences = []
         for i in tqdm(range(batch_size)):
             # randomly sample an event from the global catalog of major earthquakes
-            event = major_earthquakes_df.sample(n=1)
+            event = global_mainshock_df.sample(n=1)
 
             # randomly shift the window of observation around the 'mainshock' in consideration
             # Note that we need to deal with the annoying edge cases.
-            time_shift = np.random.uniform(0, self.metadata["t_end"])
-            start_time = max(
-                [
-                    event.time.item() - datetime.timedelta(days=time_shift),
-                    global_start_time,
-                ]
-            )
 
-            end_time = min(
-                [
-                    event.time.item()
-                    + (datetime.timedelta(days=self.metadata["t_end"] - time_shift)),
-                    global_end_time,
-                ]
+            # -----------------------|                                set     (*: mainshock)                   |
+            # global_start_time ---- |start_time --- sequence_start_time <-*-> sequence_end_time ----- end_time|
+            # global_start_time ---- |sequence_start_time <-*-> sequence_end_time -------------------- end_time|
+            # global_start_time ---- |start_time -------------------sequence_start_time <-*-> sequence_end_time|
+
+            # Note that the variables get confusing here:
+            # self.metadata["t_end"] is the total length of the sequence (in days)
+            # start_time is the start time of the set (as a timestamp)
+            # end_time is the end time of the set (as a timestamp)
+            # global_start_time is the start time of the global catalog (as a timestamp)
+            # sequence_start_time is the start time of the sequence (as a timestamp)
+            # sequence_end_time is the end time of the sequence (as a timestamp)
+            # t_start is the start time of the sequence (a float in days - starting from 0.0)
+            # number_of_days_before_nll is the number of days before the NLL interval (a float in days - starting from 0.0)
+            # total_number_of_days is the total number of days in the sequence (a float in days - starting from 0.0)
+
+            time_shift = np.random.uniform(0, self.metadata["t_end"])
+
+            sequence_nll_start_time = event.time.item() - datetime.timedelta(
+                days=time_shift
+            )
+            sequence_end_time = event.time.item() + (
+                datetime.timedelta(days=self.metadata["t_end"] - time_shift)
             )
 
             space_index = tree.query_radius(
@@ -128,36 +154,47 @@ class ANSS_MultiCatalog(Catalog):
 
             local_df = global_df.iloc[space_index]
 
-            local_df = local_df.loc[
-                (local_df.time > start_time) & (local_df.time < end_time)
-            ]
+            local_df = local_df.loc[local_df.time < sequence_end_time]
 
-            t_start = 0.0
-            t_end = min(
-                (global_end_time - start_time) / pd.Timedelta("1 day"),
-                self.metadata["t_end"],
-            )
+            total_number_of_days = (
+                sequence_end_time - global_start_time
+            ) / pd.Timedelta("1 day")
+            
+            number_of_days_before_nll = (
+                sequence_nll_start_time - global_start_time
+            ) / pd.Timedelta("1 day")
 
             local_df = local_df.sort_values("time", ascending=[True])
 
             arrival_times = (
-                (local_df.time - start_time) / pd.Timedelta("1 day")
+                (local_df.time - global_start_time) / pd.Timedelta("1 day")
             ).values
-            inter_times = np.diff(arrival_times, prepend=[t_start], append=[t_end])
+            inter_times = np.diff(
+                arrival_times, prepend=[0.0], append=[total_number_of_days]
+            )
             mag = local_df.mag.values
-            
-            mag_bounds = torch.as_tensor([self.metadata["mag_completeness"], 10.0], dtype=torch.float32)
-            
+
+            mag_bounds = torch.as_tensor(
+                [self.metadata["mag_completeness"], 10.0], dtype=torch.float32
+            )
+
             mag_marks = ContinuousMarks(
                 values=torch.as_tensor(mag, dtype=torch.float32),
                 bounds=mag_bounds,
             )
 
+            if arrival_times[-1] < number_of_days_before_nll:
+                # we need to pad the sequence with zeros
+                print(
+                    " there is an issue with the sequence, the last event is before the NLL interval"
+                )
+
             sequences.append(
                 Sequence(
                     inter_times=torch.as_tensor(inter_times, dtype=torch.float32),
-                    t_start=t_start,
+                    t_start=0.0,
                     mag=mag_marks,
+                    t_nll_start=number_of_days_before_nll,
                 )
             )
 
@@ -178,12 +215,42 @@ class ANSS_MultiCatalog(Catalog):
         """
         print("Downloading...")
 
+        # dowload all of the events once:
+        client = Client("IRIS")
+
+        global_obspy_catalog = client.get_events(
+            starttime=UTCDateTime(self.metadata["train_daterange"][0]),
+            endtime=UTCDateTime(self.metadata["test_daterange"][1]),
+            magnitudetype="MW",
+            minmagnitude=self.metadata["mag_completeness"],
+        )
+
+        global_catalog_df = self.obspy2pd(global_obspy_catalog)
+        mainshock_df = global_catalog_df.loc[
+            global_catalog_df.mag > self.metadata["minimum_mainshock_mag"]
+        ]
+        global_tree = BallTree(
+            np.deg2rad(global_catalog_df[["lat", "lon"]].values), metric="haversine"
+        )
+
         set_names = ["train", "val", "test"]
         for i_set in set_names:
             print(i_set)
-            n = int(self.metadata["num_sequences"] * self.metadata[f"{i_set}_frac"])
-            dataset = self.get_catalog_batch(n, *self.metadata[f"{i_set}_daterange"])
+
+            dataset = self.get_catalog_batch(
+                batch_size=int(
+                    self.metadata["num_sequences"] * self.metadata[f"{i_set}_frac"]
+                ),
+                global_df=global_catalog_df,
+                global_mainshock_df=mainshock_df,
+                tree=global_tree,
+                start_time=self.metadata[f"{i_set}_daterange"][0],
+                end_time=self.metadata[f"{i_set}_daterange"][1],
+                global_start_time=self.metadata["train_daterange"][0],
+            )
+
             dataset.save_to_disk((self.root_dir / f"{i_set}.pt"))
+
         print("Success!")
 
     @staticmethod
