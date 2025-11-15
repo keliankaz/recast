@@ -1,5 +1,7 @@
 from pathlib import Path
 from typing import Union
+import os
+import warnings
 
 from eq.data import (
     Catalog,
@@ -52,6 +54,7 @@ class ANSS_MultiCatalog(Catalog):
         mag_completeness: float = 5.0,
         minimum_mainshock_mag: float = 7.0,
         random_state: int = 123,
+        include_depth: bool = True
     ):
         metadata = {
             "name": "ANSS_MultiCatalog",
@@ -68,6 +71,7 @@ class ANSS_MultiCatalog(Catalog):
             "train_daterange": train_daterange,
             "val_daterange": val_daterange,
             "test_daterange": test_daterange,
+            "include_depth": include_depth,
         }
         
         # set a private variable for the magnitude completeness of the ANSS catalog to avoid

@@ -4,7 +4,7 @@ from typing import Optional, Union
 import numpy as np
 import torch
 
-from .dot_dict import DotDict
+from eq.data.dot_dict import DotDict
 
 
 class ContinuousMarks:
@@ -113,7 +113,7 @@ class Sequence(DotDict):
         **kwargs,
     ):
         super().__init__()
-        self.inter_times = torch.flatten(torch.as_tensor(inter_times))
+        self.inter_times = torch.flatten(torch.as_tensor(inter_times,dtype=torch.float32))
         if not self.inter_times.dtype in [torch.float32, torch.float64]:
             raise ValueError(
                 f"inter_times must be of type torch.float32 or torch.float64 "

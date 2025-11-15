@@ -1,0 +1,22 @@
+wandb_version: 1
+
+batch_size:
+  value: 64
+betas:
+  value:
+  - 0.99
+  - 0.9999
+context_size:
+  value: 64
+dropout_proba:
+  value: 0.4
+lr:
+  value: 0.001
+num_components:
+  value: 8
+rnn_type:
+  value: LSTM
+tau_mean:
+  value: 0.02
+weight_decay:
+  value: 0.005

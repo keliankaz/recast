@@ -102,8 +102,9 @@ def visualize_sequence(
     ax.scatter(
         t,
         mag,
-        s=np.exp(2 * (mag - mag_completeness)),
+        s=np.exp(mag - mag_completeness),
         c=event_color,
+        alpha=0.7,
         label="Events",
     )
     _, y_max = ax.get_ylim()
