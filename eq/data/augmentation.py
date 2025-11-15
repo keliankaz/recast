@@ -35,36 +35,21 @@ def jitter(
     return seq
 
 
-@register("superimpose")
-def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
-    """Superimpose a random sequence from `seq_back` onto `seq`.
-
-    The resulting sequence preserves the bounds of `seq`.
-    """
-
+@register("jitter_time")
+def jitter_time(seq: Sequence, std: float = 1e-5) -> Sequence:
+    """Jitter the time of a sequence. Default std is 1e-5 days, which is approximately 1 second."""
     seq = deepcopy(seq)
-    other = random.choice(seq_bank)
-    other = other.get_subsequence(
-        max(seq.t_start, other.t_start), 
-        min(seq.t_end, other.t_end)
+    arrival_times = seq.arrival_times + torch.abs(
+        torch.normal(0, std, seq.arrival_times.shape)
     )
-    
-    arrival_times, sorted_idx = torch.cat(
-        [seq.arrival_times, other.arrival_times]
-    ).sort()
-
-    inter_times = torch.diff(
-        arrival_times, 
-        prepend=torch.tensor([seq.t_start], device=seq.arrival_times.device, dtype=seq.arrival_times.dtype), 
-        append=torch.tensor([seq.t_end], device=seq.arrival_times.device, dtype=seq.arrival_times.dtype)
-    )
+    arrival_times = torch.clamp(arrival_times, min=seq.t_start, max=seq.t_end)
+    arrival_times, sorted_idx = arrival_times.sort()
+    inter_times = seq.compute_inter_times(arrival_times, seq.t_start, seq.t_end)
 
     remaining_attr = {}
     for key in seq.keys():
         if "_bounds" not in key and key not in seq.default_sequence_attrs:
-            remaining_attr[key] = torch.cat([seq[key], other[key]])[
-                sorted_idx
-            ]  # Should I account for other potential dimensions here?
+            remaining_attr[key] = seq[key][sorted_idx]
 
     bounds = {}
     for key, value in seq.items():
@@ -79,6 +64,80 @@ def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
         **remaining_attr,
         **bounds,
     )
+
+
+@register("superimpose")
+def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
+    """Superimpose a random sequence from `seq_back` onto `seq`.
+
+    The resulting sequence preserves the bounds of `seq`.
+    """
+
+    seq = deepcopy(seq)
+    
+    print(Sequence.compute_inter_times(seq.arrival_times, seq.t_start, seq.t_end).min())
+    other = random.choice(seq_bank)
+
+
+    # an issue arises when there is a long conditioning sequence. Here I align the both sequences to the same
+    # nll start time.
+
+    # seq:
+    #    | ------ | -- |
+
+    # other (case 1):
+    #       | ---------------- | -- |
+
+    #           | ------ | -- |
+    # | ---------------- | -- |
+
+    # other (case 2):
+    # | -- | - |
+
+    # | ------ | -- |
+    #      | -- | - |
+
+    assert (
+        other.t_end - other.t_start >= seq.t_end - seq.t_nll_start
+    ), "The duration of the other sequence needs to longer than interval must be longer than the nll interval of seq"
+
+    # randomly choose a start time for other that ensures that the whole interval between seq.t_nll_start and seq.t_end is covered by other.
+    seq_shift = -seq.t_start
+    
+    min_shift = max(0, seq.t_end - other.t_end - other.t_nll_start)
+    max_shift = seq.t_nll_start - other.t_start
+    
+    random_shift = torch.rand(1) * (max_shift - min_shift) + min_shift
+    
+    other_arrival_times = other.arrival_times + random_shift
+    seq_arrival_times = seq.arrival_times + seq_shift
+    
+    combined_arrival_times, sorted_idx = torch.cat([seq_arrival_times, other_arrival_times]).sort()
+    inter_times = Sequence.compute_inter_times(combined_arrival_times, 0, max(seq.t_end+seq_shift, other.t_end+random_shift))
+    
+    remaining_attr = {}
+    for key in seq.keys():
+        if "_bounds" not in key and key not in seq.default_sequence_attrs:
+            remaining_attr[key] = torch.cat([seq[key], other[key]])[
+                sorted_idx
+            ]  # Should I account for other potential dimensions here?
+
+    bounds = {}
+    for key, value in seq.items():
+        if "_bounds" in key:
+            bounds[key] = value
+
+    combined_sequence = Sequence(
+        inter_times=inter_times,
+        t_start=0,
+        t_end=max(seq.t_end+seq_shift, other.t_end+random_shift),
+        t_nll_start=seq.t_nll_start + seq_shift,
+        **remaining_attr,
+        **bounds,
+    )
+    
+    return combined_sequence.get_subsequence(seq.t_start + seq_shift, seq.t_end + seq_shift)
+
 
 def build_augmentations(specs):
     """Build a list of augmentations from a list of specifications.

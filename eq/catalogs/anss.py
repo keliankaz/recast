@@ -16,7 +16,8 @@ import datetime
 import numpy as np
 from tqdm import tqdm
 from sklearn.neighbors import BallTree
-
+import warnings
+import os
 import torch
 
 
@@ -68,8 +69,20 @@ class ANSS_MultiCatalog(Catalog):
             "val_daterange": val_daterange,
             "test_daterange": test_daterange,
         }
+        
+        # set a private variable for the magnitude completeness of the ANSS catalog to avoid
+        # downloading the global catalog multiple times. The detault behavior downloads the global catalog
+        # at M4.5 once and than uses this file for all subsequent calls, if the file exists.
+        self.__anss_mag_completeness = 4.5
+        if metadata["mag_completeness"] < self.__anss_mag_completeness:
+            warnings.warn(f"The magnitude completeness of the ANSS catalog (~{self.__anss_mag_completeness}) is higher than the specified magnitude of completeness {metadata['mag_completeness']}")
+            self.__mag_completeness = metadata["mag_completeness"]
+        else: 
+            self.__mag_completeness = self.__anss_mag_completeness
 
+    
         super().__init__(root_dir=root_dir, metadata=metadata)
+        
 
         self.train = InMemoryDataset.load_from_disk(self.root_dir / "train.pt")
         self.val = InMemoryDataset.load_from_disk(self.root_dir / "val.pt")
@@ -78,6 +91,103 @@ class ANSS_MultiCatalog(Catalog):
     @property
     def required_files(self):
         return ["train.pt", "val.pt", "test.pt", "metadata.pt"]
+
+    def get_and_save_catalog(
+        self,
+        filename: Union[str, Path] = "_temp_local_catalog.csv",
+        starttime: str = "2019-01-01",
+        endtime: str = "2020-01-01",
+        latitude_range: list[float] = [-90, 90],
+        longitude_range: list[float] = [-180, 180],
+        minimum_magnitude: float = 4.5,
+        default_client_name: str = "IRIS",
+        reload: bool = True,
+    ) -> pd.DataFrame:
+        """
+        Gets earthquake catalog for the specified region and minimum event
+        magnitude and writes the catalog to a file.
+
+        By default, events are retrieved from the NEIC PDE catalog for recent
+        events and then the ISC catalog when it becomes available. These default
+        results include only that catalog's "primary origin" and
+        "primary magnitude" for each event.
+        """
+
+        if longitude_range[1] > 180:
+            longitude_range[1] = 180
+            warnings.warn("Longitude range exceeds 180 degrees. Setting to 180.")
+
+        if longitude_range[0] < -180:
+            longitude_range[0] = -180
+            warnings.warn("Longitude range exceeds -180 degrees. Setting to -180.")
+
+        if latitude_range[1] > 90:
+            latitude_range[1] = 90
+            warnings.warn("Latitude range exceeds 90 degrees. Setting to 90.")
+
+        if latitude_range[0] < -90:
+            latitude_range[0] = -90
+            warnings.warn("Latitude range exceeds -90 degrees. Setting to -90.")
+
+        client_name = default_client_name
+
+        querry = dict(
+            starttime=starttime,
+            endtime=endtime,
+            minmagnitude=minimum_magnitude,
+            minlatitude=latitude_range[0],
+            maxlatitude=latitude_range[1],
+            minlongitude=longitude_range[0],
+            maxlongitude=longitude_range[1],
+        )
+
+        if not (
+            reload is False
+            and os.path.exists(filename)
+            and np.load(
+                os.path.splitext(filename)[0] + "_metadata.npy", allow_pickle=True
+            ).item()
+            == querry
+        ):
+            warnings.warn(f"Reloading {filename}")
+
+            # Use obspy api to ge  events from the IRIS earthquake client
+            client = Client(client_name)
+            cat = client.get_events(**querry)
+
+            # Write the earthquakes to a file
+            f = open(filename, "w")
+            f.write("time,lat,lon,depth,mag\n")
+            for event in cat:
+                loc = event.preferred_origin()
+                lat = loc.latitude
+                lon = loc.longitude
+                dep = loc.depth
+                time = loc.time.matplotlib_date
+                mag = event.preferred_magnitude().mag
+                f.write("{},{},{},{},{}\n".format(time, lat, lon, dep, mag))
+            f.close()
+
+            # Save querry to metadatafile
+            np.save(os.path.splitext(filename)[0] + "_metadata.npy", querry)
+        else:
+            warnings.warn(f"Using existing {filename}")
+
+        df = pd.read_csv(filename, na_values="None")
+
+        # remove rows with NaN values, reset index and provide a warning is any rows were removed
+        if df.isna().values.any():
+            warnings.warn(
+                f"{sum(sum(df.isna().values))} NaN values found in catalog. Removing rows with NaN values."
+            )
+            df = df.dropna()
+            df = df.reset_index(drop=True)
+
+        df.depth = df.depth / 1000  # convert depth from m to km
+        
+        df["time"] = pd.to_datetime(pd.to_datetime(df["time"], unit="d"))
+
+        return df
 
     def get_catalog_batch(
         self,
@@ -101,6 +211,7 @@ class ANSS_MultiCatalog(Catalog):
         assert (end_time - start_time) / pd.Timedelta(days=1) >= self.metadata[
             "t_end"
         ] * 2, "The time range is too short to generate the sequences with duration self.metadata['t_end'], allowing for a random time shift"
+
 
         global_mainshock_df = global_mainshock_df.loc[
             (
@@ -213,19 +324,20 @@ class ANSS_MultiCatalog(Catalog):
         Returns:
             None
         """
-        print("Downloading...")
-
-        # dowload all of the events once:
-        client = Client("IRIS")
-
-        global_obspy_catalog = client.get_events(
-            starttime=UTCDateTime(self.metadata["train_daterange"][0]),
-            endtime=UTCDateTime(self.metadata["test_daterange"][1]),
-            magnitudetype="MW",
-            minmagnitude=self.metadata["mag_completeness"],
+        
+        
+        # create the raw directory if it doesn't exist
+        (self.root_dir.parent / "raw").mkdir(parents=True, exist_ok=True)
+        
+        print("Downloading/loading...")
+        global_catalog_df = self.get_and_save_catalog(
+            filename=self.root_dir.parent / "raw" / "anss_global_catalog.csv",
+            starttime=self.metadata["train_daterange"][0].strftime("%Y-%m-%d"),
+            endtime=self.metadata["test_daterange"][1].strftime("%Y-%m-%d"),
+            minimum_magnitude=self.__mag_completeness,
+            reload=False,
         )
-
-        global_catalog_df = self.obspy2pd(global_obspy_catalog)
+        
         mainshock_df = global_catalog_df.loc[
             global_catalog_df.mag > self.metadata["minimum_mainshock_mag"]
         ]
