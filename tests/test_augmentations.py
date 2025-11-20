@@ -1,4 +1,3 @@
-from eq.data import Batch
 from eq.data.augmentation import jitter, superimpose
 from .test_data import TestSequence
 import torch
