@@ -12,14 +12,10 @@ from eq.data import (
 )
 import pandas as pd
 from obspy.clients.fdsn import Client
-from obspy import UTCDateTime
-from obspy.core.event import Catalog as ObsPyCatalog
 import datetime
 import numpy as np
 from tqdm import tqdm
 from sklearn.neighbors import BallTree
-import warnings
-import os
 import torch
 
 
