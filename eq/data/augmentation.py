@@ -1,8 +1,8 @@
+from pytorch_lightning.callbacks import device_stats_monitor
 from eq.data import Sequence, Batch
 from copy import deepcopy
 import random
 import torch
-import numpy as np
 from typing import List
 
 #
@@ -40,8 +40,8 @@ def jitter(
 def jitter_time(seq: Sequence, std: float = 1e-5) -> Sequence:
     """Jitter the time of a sequence. Default std is 1e-5 days, which is approximately 1 second."""
     seq = deepcopy(seq)
-    arrival_times = seq.arrival_times + torch.abs(
-        torch.normal(0, std, seq.arrival_times.shape)
+    arrival_times = seq.arrival_times64 + torch.abs(
+        torch.normal(0, std, seq.arrival_times64.shape)
     )
     arrival_times = torch.clamp(arrival_times, min=seq.t_start, max=seq.t_end)
     arrival_times, sorted_idx = arrival_times.sort()
@@ -79,24 +79,6 @@ def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
 
     other = random.choice(seq_bank)
 
-    # an issue arises when there is a long conditioning sequence. Here I align the both sequences to the same
-    # nll start time.
-
-    # seq:
-    #    | ------ | -- |
-
-    # other (case 1):
-    #       | ---------------- | -- |
-
-    #           | ------ | -- |
-    # | ---------------- | -- |
-
-    # other (case 2):
-    # | -- | - |
-
-    # | ------ | -- |
-    #      | -- | - |
-
     assert (
         other.t_end - other.t_start >= seq.t_end - seq.t_nll_start
     ), "The duration of the other sequence needs to longer than interval must be longer than the nll interval of seq"
@@ -104,11 +86,11 @@ def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
     # randomly choose a start time for other that ensures that the whole interval between seq.t_nll_start and seq.t_end is covered by other.
     seq_shift = -seq.t_start
 
-    min_shift = max(0, seq.t_end - other.t_end - other.t_nll_start)
-    max_shift = seq.t_nll_start - other.t_start
+    min_shift = max(-other.t_start, (other.t_end - other.t_start) - (seq.t_end - seq.t_start))
+    max_shift = (seq.t_nll_start - seq.t_start) - other.t_start
 
     random_shift = torch.rand(1) * (max_shift - min_shift) + min_shift
-    
+
     other_arrival_times = (
         other.inter_times.cumsum(dim=-1, dtype=torch.float64)[:-1]
         + other.t_start
@@ -126,11 +108,13 @@ def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
 
     inter_times = torch.diff(
         combined_arrival_times,
-        prepend=torch.tensor([0.0], dtype=dtype),
+        prepend=torch.tensor([0.0], dtype=torch.float64),
         append=torch.tensor(
-            [max(seq.t_end + seq_shift, other.t_end + random_shift)], dtype=dtype
+            [max(seq.t_end + seq_shift, other.t_end + random_shift)],
+            dtype=torch.float64,
         ),
-    )
+    ).to(dtype)
+    
 
     remaining_attr = {}
     for key in seq.keys():
@@ -146,13 +130,13 @@ def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
 
     combined_sequence = Sequence(
         inter_times=inter_times,
-        t_start=0,
+        t_start=0.0,
         t_end=max(seq.t_end + seq_shift, other.t_end + random_shift),
         t_nll_start=seq.t_nll_start + seq_shift,
         **remaining_attr,
         **bounds,
     )
-    
+
     return combined_sequence.get_subsequence(
         seq.t_start + seq_shift, seq.t_end + seq_shift
     )
@@ -179,7 +163,7 @@ class AugmentationCollator:
 
     def __call__(self, seq_list: List[Sequence]) -> Batch:
         """returns an augmented batch given a list of sequences"""
-        
+
         for aug in self.aug_list:
             seq_list = [aug(seq) for seq in seq_list]
 

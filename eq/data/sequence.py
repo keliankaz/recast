@@ -99,6 +99,7 @@ class Sequence(DotDict):
 
     default_sequence_attrs = {
         "arrival_times",
+        "arrival_times64",    # used for computation of arrival times in double precision
         "inter_times",
         "t_start",
         "t_end",
@@ -113,13 +114,21 @@ class Sequence(DotDict):
         **kwargs,
     ):
         super().__init__()
-        self.inter_times = torch.flatten(torch.as_tensor(inter_times,dtype=torch.float32))
+        self.inter_times = torch.flatten(
+            torch.as_tensor(inter_times, dtype=torch.float32)
+        )
         if not self.inter_times.dtype in [torch.float32, torch.float64]:
             raise ValueError(
                 f"inter_times must be of type torch.float32 or torch.float64 "
                 "(got {self.inter_times.dtype})"
             )
-        self.arrival_times = self.inter_times.cumsum(dim=-1)[:-1] + t_start
+
+        # interevent_times is float32 on MPS
+        inter = self.inter_times.to("cpu", dtype=torch.float64)
+        self.arrival_times64 = inter.cumsum(dim=-1)[:-1] + t_start
+        self.arrival_times = self.arrival_times64.to(
+            self.inter_times.device, dtype=self.inter_times.dtype
+        )
 
         self.t_start = float(t_start)
         self.t_end = float(self.inter_times.sum().item() + self.t_start)
@@ -150,13 +159,14 @@ class Sequence(DotDict):
 
     def __len__(self):
         return self.num_events
-    
+
     @staticmethod
     def compute_inter_times(
         arrival_times: Union[np.ndarray, list, torch.Tensor],
         t_start: float,
         t_end: float,
     ) -> np.ndarray:
+
         return np.diff(arrival_times, prepend=[t_start], append=[t_end])
 
     def get_subsequence(self, start: float, end: float) -> "Sequence":
@@ -167,7 +177,7 @@ class Sequence(DotDict):
             )
         mask = (self.arrival_times >= start) & (self.arrival_times <= end)
 
-        new_arrival_times = self.arrival_times[mask]
+        new_arrival_times = self.arrival_times64[mask]
         if len(new_arrival_times) > 0:
             last_inter_time = torch.tensor(
                 [end - new_arrival_times[-1]],
@@ -190,7 +200,18 @@ class Sequence(DotDict):
             if "_bounds" not in key and key not in self.default_sequence_attrs:
                 other_attr[key] = value[mask].contiguous()
 
-        return Sequence(inter_times=new_inter_times, t_start=start, t_nll_start=max(self.t_nll_start, start), **other_attr)
+        bounds = {}
+        for key, value in self.items():
+            if "_bounds" in key:
+                bounds[key] = value
+
+        return Sequence(
+            inter_times=new_inter_times,
+            t_start=start,
+            t_nll_start=max(self.t_nll_start, start),
+            **other_attr,
+            **bounds,
+        )
 
     def state_dict(self) -> dict:
         # These attributes are computed from inter_times and t_start, no need to save them to disk
