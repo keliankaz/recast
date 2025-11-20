@@ -4,7 +4,7 @@ channels:
   - defaults
   - conda-forge
 dependencies:  
-  - python=3.9
+  - python
   - ipywidgets
   - joblib
   - jupyter
@@ -21,8 +21,8 @@ dependencies:
   - obspy
   - cudatoolkit
   - pip
+  - pytorch-lightning
   - pip:
-    - pytorch-lightning==1.5.9
     - setuptools==59.5.0
     - sacred==0.8.2
     - wandb==0.12.10
