@@ -250,7 +250,7 @@ def visualize_trajectories(
     if add_mag_threshold:
         is_bigger = np.array(
             [
-                (forecast[i].mag.max() > add_mag_threshold).any().item()
+                (forecast[i].mag.max() > add_mag_threshold).any().item() if len(forecast[i]) > 0 else False
                 for i in range(len(forecast))
             ]
         )

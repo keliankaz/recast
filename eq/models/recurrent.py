@@ -68,10 +68,9 @@ class RecurrentTPP(TPPModel):
                 f"rnn_type must be one of ['RNN', 'GRU', 'LSTM'] " f"(got {rnn_type})"
             )
         self.num_rnn_inputs = (
-            1 + int(self.input_magnitude) + (
-                0  if self.num_extra_features is None
-                else self.num_extra_features
-            )
+            1
+            + int(self.input_magnitude)
+            + (0 if self.num_extra_features is None else self.num_extra_features)
         )
 
         self.rnn = getattr(nn, rnn_type)(
@@ -87,9 +86,9 @@ class RecurrentTPP(TPPModel):
         log_tau = torch.log(torch.clamp_min(inter_times, 1e-10)).unsqueeze(-1)
         return log_tau - self.log_tau_mean
 
-    def encode_magnitude(self, mag, mag_completeness: Union[float,torch.tensor]):
+    def encode_magnitude(self, mag, mag_completeness: Union[float, torch.tensor]):
         # mag has shape (...)
-        # mag_completeness 
+        # mag_completeness
         # output has shape (..., 1)
         if type(mag) is float:
             out = mag.unsqueeze(-1) - mag_completeness
@@ -112,7 +111,7 @@ class RecurrentTPP(TPPModel):
         """
         feat_list = [self.encode_time(batch.inter_times)]
         if self.input_magnitude:
-            feat_list.append(self.encode_magnitude(batch.mag, batch.mag_bounds[:,0]))
+            feat_list.append(self.encode_magnitude(batch.mag, batch.mag_bounds[:, 0]))
         if self.num_extra_features is not None:
             feat_list.append(self.encode_extra_features(batch.extra_feat))
         features = torch.cat(feat_list, dim=-1)
@@ -142,10 +141,10 @@ class RecurrentTPP(TPPModel):
         )
 
     def get_magnitude_dist(self, context, mag_completeness):
-        """Returns the GutenberRichter distribution for each context.  """
+        """Returns the GutenberRichter distribution for each context."""
         log_rate = self.hypernet_mag(context).squeeze(-1)  # (B, L)
-        b = self.richter_b * torch.ones_like(log_rate)
-        mag_min = mag_completeness.unsqueeze(1) * torch.ones_like(b[0,:])                     # FLAG
+        b = self.richter_b * torch.ones_like(log_rate) # (B, L)
+        mag_min = mag_completeness.unsqueeze(1) * torch.ones_like(b[0, :])  # FLAG 
         return dist.GutenbergRichter(b=b, mag_min=mag_min)
 
     def nll_loss(self, batch: eq.data.Batch) -> torch.Tensor:
@@ -161,7 +160,9 @@ class RecurrentTPP(TPPModel):
         context = self.get_context(batch)  # (B, L, C)
         # Inter-event times
         inter_time_dist = self.get_inter_time_dist(context)
-        log_pdf = inter_time_dist.log_prob(batch.inter_times.clamp_min(1e-10))  # (B, L) # KDC: is this clamping twice?
+        log_pdf = inter_time_dist.log_prob(
+            batch.inter_times.clamp_min(1e-10)
+        )  # (B, L) # KDC: is this clamping twice?
         log_like = (log_pdf * batch.mask).sum(-1)
 
         # Survival time from last event until t_end
@@ -192,7 +193,7 @@ class RecurrentTPP(TPPModel):
         t_start: float = 0.0,
         past_seq: Optional[eq.data.Sequence] = None,
         return_sequences: bool = False,
-        mag_completeness: Optional[float] = None 
+        mag_completeness: Optional[float] = None,
     ) -> Union[eq.data.Batch, List[eq.data.Sequence]]:
         """Simulate a batch of event sequences from the model.
 
@@ -208,11 +209,12 @@ class RecurrentTPP(TPPModel):
             batch: Sequences generated from the model.
 
         """
-        raise NotImplementedError() # temporary hide this function
+
         if self.input_magnitude != self.predict_magnitude:
             raise ValueError(
                 "Sampling is impossible if input_magnitude != predict_magnitude"
             )
+
         if self.num_extra_features is not None:
             raise ValueError("Sampling is not currently supported for extra features")
 
@@ -220,15 +222,28 @@ class RecurrentTPP(TPPModel):
             t_start = past_seq.t_end
             past_batch = eq.data.Batch.from_list([past_seq])
             if mag_completeness is not None:
-                assert mag_completeness == past_seq.mag_bounds[0] # TODO: use the mag_completeness to truncate the output. 
+                mag_threshold = torch.as_tensor(
+                    mag_completeness, device=self.device, dtype=past_seq.mag_bounds.dtype
+                )
             else:
-                mag_completeness = past_seq.mag_bounds[0]
+                mag_threshold = past_seq.mag_bounds[0].to(self.device)
             current_state = self.get_context(past_batch)[:, [-1], :]  # (1, 1, C)
-            current_state = current_state.expand(batch_size, -1, -1)
+            current_state = current_state.expand(batch_size, -1, -1)  # (B, 1, C)
             time_remaining = past_seq.t_end - past_seq.arrival_times[-1]
         else:
             current_state = torch.zeros(batch_size, 1, self.context_size)
             time_remaining = None
+            mag_threshold = (
+                torch.as_tensor(
+                    mag_completeness, device=self.device, dtype=current_state.dtype
+                )
+                if mag_completeness is not None
+                else None
+            )
+        if self.predict_magnitude and mag_threshold is None:
+            raise ValueError("mag_completeness must be provided when sampling magnitudes")
+        if mag_threshold is not None and mag_threshold.ndim == 0:
+            mag_threshold = mag_threshold.expand(batch_size)
         t_end = t_start + duration
 
         inter_times = torch.empty(batch_size, 0, device=self.device)
@@ -256,10 +271,15 @@ class RecurrentTPP(TPPModel):
             rnn_input_list = [self.encode_time(next_inter_times)]
 
             if self.predict_magnitude:
-                mag_dist = self.get_magnitude_dist(current_state)
-                next_mag = mag_dist.sample()  # (B, 1)                                  # FLAG
+                mag_dist = self.get_magnitude_dist(current_state, mag_threshold)
+                next_mag = (
+                    mag_dist.sample()
+                )  # (B, 1)                                  # FLAG
+                next_mag = next_mag.clamp_min_(mag_threshold.unsqueeze(1))
                 magnitudes = torch.cat([magnitudes, next_mag], dim=1)  # (B, L)
-                rnn_input_list.append(self.encode_magnitude(next_mag, mag_completeness))                  # FLAG
+                rnn_input_list.append(
+                    self.encode_magnitude(next_mag, mag_threshold)
+                )  # FLAG
 
             with torch.no_grad():
                 reached = inter_times.sum(-1).min()
@@ -320,7 +340,7 @@ class RecurrentTPP(TPPModel):
         batch = eq.data.Batch.from_list([sequence])
         context = self.get_context(batch).squeeze(0)  # (L, C)
         inter_time_dist = self.get_inter_time_dist(context)
-        
+
         # Note that on each interval the compensator can be computed as:
         # compensator = -log_surv(x)
         # or
@@ -339,5 +359,3 @@ class RecurrentTPP(TPPModel):
         offsets = torch.cat([torch.tensor([0.0]), sequence.arrival_times])
         grid = (x + offsets).T.reshape(-1)
         return grid, compensator
-
-        

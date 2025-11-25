@@ -25,6 +25,7 @@ class GutenbergRichter(Distribution):
         return torch.zeros_like(x)
 
     def rsample(self, sample_shape=torch.Size()):
+        
         shape = torch.Size(sample_shape) + self.batch_shape
         u = torch.empty(shape, device=self.b.device, dtype=self.b.dtype).uniform_()
         return self.b.reciprocal().neg() * torch.log10(

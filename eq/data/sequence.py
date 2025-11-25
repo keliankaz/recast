@@ -25,7 +25,6 @@ class ContinuousMarks:
     dimensions associated with the marks and n >= d+1 to bound the marks bounds.
 
     Args:
-        name: Name of the mark.
         values: Values associated with the mark.
         bounds: bounds associated with the mark.
         nll_bounds: bounds on which the NLL is evaluated.
