@@ -1,11 +1,9 @@
-from pytorch_lightning.callbacks import device_stats_monitor
 from eq.data import Sequence, Batch
 from copy import deepcopy
 import random
 import torch
 from typing import List
 
-#
 AUGMENTATION_REGISTRY = {}
 
 
@@ -67,6 +65,8 @@ def jitter_time(seq: Sequence, std: float = 1e-5) -> Sequence:
     )
 
 
+
+
 @register("superimpose")
 def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
     """Superimpose a random sequence from `seq_back` onto `seq`.
@@ -86,7 +86,9 @@ def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
     # randomly choose a start time for other that ensures that the whole interval between seq.t_nll_start and seq.t_end is covered by other.
     seq_shift = -seq.t_start
 
-    min_shift = max(-other.t_start, (other.t_end - other.t_start) - (seq.t_end - seq.t_start))
+    min_shift = max(
+        -other.t_start, (other.t_end - other.t_start) - (seq.t_end - seq.t_start)
+    )
     max_shift = (seq.t_nll_start - seq.t_start) - other.t_start
 
     random_shift = torch.rand(1) * (max_shift - min_shift) + min_shift
@@ -114,7 +116,6 @@ def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
             dtype=torch.float64,
         ),
     ).to(dtype)
-    
 
     remaining_attr = {}
     for key in seq.keys():

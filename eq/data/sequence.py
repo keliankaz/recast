@@ -99,7 +99,7 @@ class Sequence(DotDict):
 
     default_sequence_attrs = {
         "arrival_times",
-        "arrival_times64",    # used for computation of arrival times in double precision
+        "arrival_times64",  # used for computation of arrival times in double precision
         "inter_times",
         "t_start",
         "t_end",
@@ -117,18 +117,10 @@ class Sequence(DotDict):
         self.inter_times = torch.flatten(
             torch.as_tensor(inter_times, dtype=torch.float32)
         )
-        if not self.inter_times.dtype in [torch.float32, torch.float64]:
+        if self.inter_times.dtype not in [torch.float32, torch.float64]:
             raise ValueError(
-                f"inter_times must be of type torch.float32 or torch.float64 "
-                "(got {self.inter_times.dtype})"
+                f"inter_times must be of type torch.float32 or torch.float64 (got {self.inter_times.dtype})"
             )
-
-        # interevent_times is float32 on MPS
-        inter = self.inter_times.to("cpu", dtype=torch.float64)
-        self.arrival_times64 = inter.cumsum(dim=-1)[:-1] + t_start
-        self.arrival_times = self.arrival_times64.to(
-            self.inter_times.device, dtype=self.inter_times.dtype
-        )
 
         self.t_start = float(t_start)
         self.t_end = float(self.inter_times.sum().item() + self.t_start)
@@ -147,6 +139,18 @@ class Sequence(DotDict):
         self._validate_args()
         # Move all tensors to the same device as inter_times
         self.to(self.inter_times.device)
+
+    @property
+    def arrival_times64(self):
+        # interevent_times is float32 on MPS
+        inter = self.inter_times.to("cpu", dtype=torch.float64)
+        return inter.cumsum(dim=-1)[:-1] + self.t_start
+
+    @property
+    def arrival_times(self):
+        return self.arrival_times64.to(
+            self.inter_times.device, dtype=self.inter_times.dtype
+        )
 
     @property
     def num_events(self):
@@ -175,7 +179,7 @@ class Sequence(DotDict):
             raise ValueError(
                 f"start must be >= {self.t_start} and end must be <= {self.t_end}"
             )
-        mask = (self.arrival_times >= start) & (self.arrival_times <= end)
+        mask = (self.arrival_times64 >= start) & (self.arrival_times64 <= end)
 
         new_arrival_times = self.arrival_times64[mask]
         if len(new_arrival_times) > 0:

@@ -1,4 +1,5 @@
 .gitignore
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -23,12 +24,12 @@ comment.cut
 # Jupyter notebooks
 *.ipynb_checkpoints
 
-.idea/
-.vscode/
+.idea/*
+.vscode/*
 .DS_Store
 
 *lightning_logs
 *exploratory/*
 
 # data
-data/
+data/*
