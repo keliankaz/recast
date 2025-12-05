@@ -33,3 +33,5 @@ comment.cut
 
 # ignore results directory
 results/
+
+.deprecated/*

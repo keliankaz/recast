@@ -70,6 +70,8 @@ def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
     """Superimpose a random sequence from `seq_back` onto `seq`.
 
     The resulting sequence preserves the bounds of `seq`.
+    
+    Note that if the location of events will be considered the superimpose may give rise to issues.
     """
 
     seq = deepcopy(seq)
