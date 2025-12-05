@@ -1,7 +1,6 @@
 from eq.data.augmentation import jitter, superimpose, sub_radius
 from test_data import TestSequence
 import torch
-from typing import List
 import numpy as np
 
 class TestAugmentations:
