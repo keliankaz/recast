@@ -28,7 +28,7 @@ def jitter(
     seq[key] += torch.abs(torch.normal(0, std, seq[key].shape))
     if enforce_bounds:
         seq[key] = torch.clamp(
-            seq[key], min=seq[key + "_bounds"][0], max=seq[key + "_bounds"][1]
+            seq[key], min=getattr(seq, key + "_bounds")[0], max=getattr(seq, key + "_bounds")[1]
         )
 
     return seq
@@ -63,8 +63,6 @@ def jitter_time(seq: Sequence, std: float = 1e-5) -> Sequence:
         **remaining_attr,
         **bounds,
     )
-
-
 
 
 @register("superimpose")
@@ -141,6 +139,18 @@ def superimpose(seq: Sequence, seq_bank: List[Sequence]) -> Sequence:
     return combined_sequence.get_subsequence(
         seq.t_start + seq_shift, seq.t_end + seq_shift
     )
+
+
+@register("sub_radius")
+def sub_radius(seq: Sequence, fraction_range: list[float] = [0.5, 1.0], radius_km: float = 1000) -> Sequence:
+    """Subset the sequence to a spatial radius of `radius` kilometers."""
+    
+    assert "distance_km" in seq.keys(), "distance_km is not a key in the sequence"
+    new_radius_km = radius_km * random.uniform(fraction_range[0], fraction_range[1])
+    indices = seq.distance_km <= new_radius_km
+    
+    return seq.subsequence_by_index(indices)
+
 
 
 def build_augmentations(specs):

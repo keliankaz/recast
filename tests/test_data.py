@@ -11,6 +11,7 @@ class TestSequence:
     start_time = 0
     end_time = 100
     mag_mean = 1
+    max_distance_km = 1000
 
     @staticmethod
     def create_sequence(
@@ -18,15 +19,27 @@ class TestSequence:
         start_time: float = 0,
         end_time: float = 100,
         mag_mean: float = 1,
+        max_distance_km: float = 1000,
     ):
         time = np.sort(np.random.uniform(start_time, end_time, num_events))
         inter_times = np.diff(time, prepend=[start_time], append=[end_time])
         mag = np.random.exponential(mag_mean, num_events)
+        
+        mag_bounds = [0, 10]
+        mag_nll_bounds = [0, 10]
+        mag = eq.data.ContinuousMarks(
+            values=torch.tensor(mag, dtype=torch.float32),
+            bounds=torch.tensor(mag_bounds, dtype=torch.float32),
+            nll_bounds=torch.tensor(mag_nll_bounds, dtype=torch.float32),
+        )
+        distance_km = np.random.uniform(0, max_distance_km, num_events)
+        
         seq = eq.data.Sequence(
             inter_times=torch.tensor(inter_times, dtype=torch.float32),
-            mag=torch.tensor(mag, dtype=torch.float32),
+            mag=mag,
             t_start=start_time,
             t_end=end_time,
+            distance_km=torch.tensor(distance_km, dtype=torch.float32),
         )
 
         return seq
@@ -66,7 +79,27 @@ class TestSequence:
         assert seq.mag_nll_bounds.shape == (2,)
         assert seq.mag_nll_bounds[0] == 2
         assert seq.mag_nll_bounds[1] == 8
-
+        
+    def test_subsequence_by_index(self):
+        seq = self.create_sequence(
+            self.num_events, self.start_time, self.end_time, self.mag_mean, self.max_distance_km
+        )
+        
+        for fraction in [0.99, 0.5, 0.01]:
+            indices = seq.distance_km < self.max_distance_km*fraction
+            subseq = seq.subsequence_by_index(indices)
+            assert len(subseq) == indices.sum().item(), "subsequence length does not match the number of events in the subset"
+            assert subseq.t_start == self.start_time, "t_start is not start"
+            assert np.abs(subseq.t_end - self.end_time) < 1e-4, "t_end is not end"
+            assert subseq.distance_km.max() if len(subseq) > 0 else 0 < self.max_distance_km*fraction, "distance_km is greater than the max distance"
+        
+        indices = np.random.randint(0, self.num_events-1)
+        subseq = seq.subsequence_by_index(indices)
+        assert len(subseq) == 1, "subsequence length is not 1"
+        assert subseq.t_start == self.start_time, "t_start is not start"
+        assert subseq.t_end == self.end_time, "t_end is not end"
+        assert len(subseq.inter_times) == 2, "For single event subsequence, inter_times length should be 2"
+        
 
 class TestBatch:
 

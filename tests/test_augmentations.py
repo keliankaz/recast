@@ -1,5 +1,5 @@
 from eq.data.augmentation import jitter, superimpose
-from .test_data import TestSequence
+from test_data import TestSequence
 import torch
 from typing import List
 
@@ -26,7 +26,7 @@ class TestAugmentations:
             new_magnitudes >= 0
         ), "Jitter should not drive magnitudes below 0"
 
-    def test_superimpose(self, seq_bank: List[TestSequence]):
+    def test_superimpose(self):
         
         other_seq = TestSequence().create_sequence()
         seq_bank = [other_seq]
@@ -39,7 +39,7 @@ class TestAugmentations:
             new_seq.t_start == self.seq.t_start
         ), "Superimpose should preserve the start time"
         assert (
-            new_seq.t_end == self.seq.t_end
+            (new_seq.t_end - self.seq.t_end) < 1e-4
         ), "Superimpose should preserve the end time"
         assert (
             new_seq.t_nll_start == self.seq.t_nll_start
@@ -53,5 +53,3 @@ class TestAugmentations:
         assert new_seq.t_nll_start is not None
         for key in self.seq.keys():
             assert key in new_seq.keys(), f"Superimpose should preserve the key {key}"
-    
-

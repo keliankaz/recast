@@ -11,10 +11,17 @@ times = [1,2,4]
 start_time = 0
 end_time = 10
 mag = [1, 2, 3]
+mag_bounds = [0, 10]
+mag_nll_bounds = [0, 10]
+mag = eq.data.ContinuousMarks(
+    values=torch.tensor(mag, dtype=torch.float32),
+    bounds=torch.tensor(mag_bounds, dtype=torch.float32),
+    nll_bounds=torch.tensor(mag_nll_bounds, dtype=torch.float32),
+)
 inter_times = np.diff(times, prepend=[start_time], append=[end_time])
 seq1 = eq.data.Sequence(
     inter_times=torch.tensor(inter_times, dtype=torch.float32), 
-    mag=torch.as_tensor(mag, dtype=torch.float32),
+    mag=mag,
     t_start=start_time, 
     t_end=end_time,
     t_nll_start=start_time,
@@ -22,12 +29,19 @@ seq1 = eq.data.Sequence(
 
 times = [1, 2, 4, 7]
 mag = [4, 0, 6, -1]
-start_time = 1
+mag_bounds = [-2, 10]
+mag_nll_bounds = [0, 10]
+mag = eq.data.ContinuousMarks(
+    values=torch.tensor(mag, dtype=torch.float32),
+    bounds=torch.tensor(mag_bounds, dtype=torch.float32),
+    nll_bounds=torch.tensor(mag_nll_bounds, dtype=torch.float32),
+)
+start_time = 0
 end_time = 20   
 inter_times = np.diff(times, prepend=[start_time], append=[end_time])
 seq2 = eq.data.Sequence(
     inter_times=torch.tensor(inter_times, dtype=torch.float32), 
-    mag=torch.as_tensor(mag, dtype=torch.float32),
+    mag=mag,
     t_start=start_time, 
     t_end=end_time,
     t_nll_start=start_time+2.5,
@@ -92,8 +106,12 @@ class TestRecurrentTPP:
         ]
     )
     def test_sample(self, batch_size, duration, past_seq):
-        
-        sample = self.model.sample(batch_size=batch_size,duration=duration,past_seq=past_seq)
+        if past_seq is None:
+            mag_completeness = 0
+        else:
+            mag_completeness = past_seq.mag_bounds[0]
+            
+        sample = self.model.sample(batch_size=batch_size,duration=duration,past_seq=past_seq, mag_completeness=mag_completeness)
         assert sample.inter_times.shape[0] == batch_size
         assert (sample.inter_times[~sample.mask.bool()] != 0).all(), "Inter-event times are zero"
         assert (sample.inter_times[sample.mask.bool()] >= 0).all(), "Inter-event times are negative"
@@ -151,7 +169,7 @@ if __name__ == "__main__":
     dist.sample()
 
     #%%
-    sample = model.sample(2,10)
+    sample = model.sample(2,10, mag_completeness=0)
     inter_times = sample.inter_times[0]
     sample.mask
 

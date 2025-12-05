@@ -216,6 +216,33 @@ class Sequence(DotDict):
             **bounds,
         )
 
+    def subsequence_by_index(self, indices: Union[list[int], torch.Tensor, int]) -> "Sequence":
+        """Select a subset of events by index or mask."""
+        
+        if isinstance(indices, int):
+            indices = [indices]
+        new_arrival_times = self.arrival_times64[indices]
+        
+        new_inter_times = self.compute_inter_times(new_arrival_times, self.t_start, self.t_end)
+        
+        other_attr = {}
+        for key, value in self.items():
+            if "_bounds" not in key and key not in self.default_sequence_attrs:
+                other_attr[key] = value[indices].contiguous()
+
+        bounds = {}
+        for key, value in self.items():
+            if "_bounds" in key:
+                bounds[key] = value
+    
+        return Sequence(
+            inter_times=new_inter_times,
+            t_start=self.t_start,
+            t_nll_start=self.t_nll_start,
+            **other_attr,
+            **bounds,
+        )
+
     def state_dict(self) -> dict:
         # These attributes are computed from inter_times and t_start, no need to save them to disk
         inferred_attributes = ["arrival_times", "t_end"]
