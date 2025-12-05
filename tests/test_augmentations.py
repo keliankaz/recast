@@ -1,8 +1,8 @@
-from eq.data.augmentation import jitter, superimpose
+from eq.data.augmentation import jitter, superimpose, sub_radius
 from test_data import TestSequence
 import torch
 from typing import List
-
+import numpy as np
 
 class TestAugmentations:
 
@@ -53,3 +53,13 @@ class TestAugmentations:
         assert new_seq.t_nll_start is not None
         for key in self.seq.keys():
             assert key in new_seq.keys(), f"Superimpose should preserve the key {key}"
+            
+    def test_sub_radius(self):
+        new_seq = sub_radius(self.seq, fraction_range=[0.5, 1.0], radius_km=TestSequence.max_distance_km)
+        assert len(new_seq) <= len(self.seq)
+        assert new_seq.t_start == self.seq.t_start
+        assert np.abs(new_seq.t_end - self.seq.t_end) < 1e-4
+        assert new_seq.t_nll_start == self.seq.t_nll_start
+        assert new_seq.distance_km.max() < TestSequence.max_distance_km
+        for key in self.seq.keys():
+            assert key in new_seq.keys(), f"Sub radius should preserve the key {key}"
