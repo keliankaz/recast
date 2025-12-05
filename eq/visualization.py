@@ -235,9 +235,10 @@ def visualize_trajectories(
 
     ylim = [0, np.quantile(cummulative_no_of_events, 0.99)]
 
+    bins = np.arange(0, int(ylim[1]))
     axB.hist(
         cummulative_no_of_events,
-        bins=50,
+        bins=bins,
         range=(int(ylim[0]), int(ylim[1])),
         orientation="horizontal",
         facecolor="k",
@@ -257,7 +258,7 @@ def visualize_trajectories(
 
         axB.hist(
             cummulative_no_of_events[is_bigger],
-            bins=50,
+            bins=bins,
             range=(int(ylim[0]), int(ylim[1])),
             orientation="horizontal",
             facecolor="r",
