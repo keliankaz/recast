@@ -8,8 +8,7 @@ from eq.data import (
     InMemoryDataset,
     Sequence,
     default_catalogs_dir,
-    ContinuousMarks,
-)
+    ContinuousMarks,)
 import pandas as pd
 from obspy.clients.fdsn import Client
 import datetime
@@ -257,13 +256,19 @@ class ANSS_MultiCatalog(Catalog):
                 datetime.timedelta(days=self.metadata["t_end"] - time_shift)
             )
 
-            space_index = tree.query_radius(
+            space_index, distances = tree.query_radius(
                 np.deg2rad(event[["lat", "lon"]].values),
                 r=self.metadata["radius"] / EARTH_RADIUS_KM,
-                return_distance=False,
-            )[0]
+                return_distance=True,
+            )
+            
+            space_index = space_index[0]
+            distances = distances[0]
+            distances = distances * EARTH_RADIUS_KM
 
             local_df = global_df.iloc[space_index]
+            
+            local_df = local_df.assign(distance_km=distances)
 
             local_df = local_df.loc[local_df.time < sequence_end_time]
 
@@ -306,6 +311,10 @@ class ANSS_MultiCatalog(Catalog):
                     t_start=0.0,
                     mag=mag_marks,
                     t_nll_start=number_of_days_before_nll,
+                    lat=torch.as_tensor(local_df.lat.values, dtype=torch.float32),
+                    lon=torch.as_tensor(local_df.lon.values, dtype=torch.float32),
+                    depth=torch.as_tensor(local_df.depth.values, dtype=torch.float32),
+                    distance_km=torch.as_tensor(local_df.distance_km.values, dtype=torch.float32),
                 )
             )
 
