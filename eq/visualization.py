@@ -134,10 +134,12 @@ def plot_counting_process(seq, ax=None, color="k", alpha=1.0, T0=None, T=None):
 
     t = np.append(seq.arrival_times.numpy(), T)
     t = np.insert(t, 0, T0, axis=0)
+    t = np.insert(t, -1, seq.t_end, axis=0)
 
     N = np.arange(len(t) - 1)
-    N = np.append(N, N[-1])
-    ax.plot(t, N, c=color, alpha=alpha)
+    N = np.insert(N, -1, N[-1], axis=0)
+
+    ax.plot(t, N, c=color, alpha=alpha, drawstyle="steps-post")
 
 
 def visualize_trajectories(
@@ -159,7 +161,7 @@ def visualize_trajectories(
         t_start = sample_forecast.t_start
         t_end = sample_forecast.t_end
 
-    duration = sample_forecast.t_end - sample_forecast.t_start
+    duration = t_end - t_start
 
     if t_before is None:
         t_before = duration
@@ -251,7 +253,11 @@ def visualize_trajectories(
     if add_mag_threshold:
         is_bigger = np.array(
             [
-                (forecast[i].mag.max() > add_mag_threshold).any().item() if len(forecast[i]) > 0 else False
+                (
+                    (forecast[i].mag.max() > add_mag_threshold).any().item()
+                    if len(forecast[i]) > 0
+                    else False
+                )
                 for i in range(len(forecast))
             ]
         )
@@ -278,3 +284,103 @@ def visualize_trajectories(
     plt.show()
 
     return [axA, axB]
+
+
+def visualize_forecasts(
+    seq: Sequence,
+    forecast: List[Sequence],
+    ax=None,
+    figsize: tuple = (6, 3),
+    dpi: int = 100,
+    event_color="C0",
+    t_start: Optional[float] = None,
+    t_end: Optional[float] = None,
+    t_before: Optional[float] = None,
+    quantiles: Optional[List[float]] = [0.05, 0.2, 0.5, 0.8, 0.95],
+    plot_observed_trajectory: bool = True,
+):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
+
+    axb = ax.twinx()
+    axb.margins(x=0)
+
+    if (t_start is None) and (t_end is None):
+        _forecast = forecast[0]
+        t_start = _forecast.t_start
+        t_end = _forecast.t_end
+
+    duration = t_end - t_start
+
+    if t_before is None:
+        t_before = duration
+
+    s_viz = seq.get_subsequence(
+        max([0, t_start - t_before]), min(seq.t_end, t_start + duration)
+    ).cpu()
+    s_obs = seq.get_subsequence(t_start, min(seq.t_end, t_start + duration)).cpu()
+
+    visualize_sequence(seq=s_viz, ax=ax, event_color=event_color, show_legend=False)
+
+    time_line = np.linspace(t_start, t_end, 100)
+
+    forecast_quantiles = np.array(
+        [
+            np.quantile(
+                [
+                    (i_forecast.arrival_times < t_i).sum().item()
+                    for i_forecast in forecast
+                ],
+                quantiles,
+            )
+            for t_i in time_line
+        ]
+    )  # shape: (len(time_line), len(quantiles))
+
+    # proceed from outside inwards
+    for i in range(len(quantiles) // 2):
+
+        q1 = quantiles[i]
+        q2 = quantiles[-(i + 1)]
+
+        axb.fill_between(
+            time_line,
+            forecast_quantiles[:, i],
+            forecast_quantiles[:, -i - 1],
+            alpha=0.2,
+            color="grey",
+        )
+        axb.text(
+            time_line[-1],
+            forecast_quantiles[-1, i],
+            f"{q1*100:.0f}%",
+            ha="right",
+            va="bottom",
+        )
+        axb.text(
+            time_line[-1],
+            forecast_quantiles[-1, -i - 1],
+            f"{q2*100:.0f}%",
+            ha="right",
+            va="bottom",
+        )
+
+    if 0.5 in quantiles:
+        axb.plot(
+            time_line, forecast_quantiles[:, np.array(quantiles) == 0.5], lw=2, c="grey"
+        )
+
+    if plot_observed_trajectory:
+        plot_counting_process(
+            seq=s_obs,
+            ax=axb,
+            color="k",
+        )
+
+    ax.set(xlabel="Time (days)", ylabel="Magnitude")
+    axb.set(
+        ylabel="Number of events",
+        ylim=(0, axb.get_ylim()[1])
+    )
+    
+    return ax
